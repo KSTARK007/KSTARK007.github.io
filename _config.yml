@@ -8,7 +8,7 @@
 
 # Basic Site Settings
 locale                   : "en-US"
-title                    : "Kiran Shashi Hombal"
+title                    : "Kiran Hombal"
 title_separator          : "-"
 name                     : &name "Kiran Hombal"
 description              : &description "personal description"
