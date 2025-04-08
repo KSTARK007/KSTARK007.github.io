@@ -19,6 +19,13 @@ I am a **2nd year Ph.D. student** in Computer Science at the **University of Ill
 - Teaming up with folks at **ARCANA Research Group** to cook up a **clustering-based caching algorithm** that finds hidden memory access patterns most people miss.
 
 
-Before joining UIUC, I spent **3.5 years at VMware R&D** as a Kernel Developer on the **Core Storage team**, where I worked on NVMe, iSCSI, and vSCSI components inside the ESXi kernel. I also interned at **Carnegie Mellon University**, where I built a kernel-aware MMU page prefetcher for improving real-time memory locality.
+Before joining UIUC, I spent **3.5 years at VMware R&D** as a Kernel Developer on the **Core Storage team**, where I worked on NVMe, iSCSI, and vSCSI components inside the ESXi kernel.
+
+I also interned at **Carnegie Mellon University**, where I built a kernel-aware MMU page prefetcher for improving real-time memory locality.
 
 ---
+
+## Service
+
+- Artifact Evaluation Committee: <span style="color:#007acc">OSDI'24, ATC'24, FAST'25</span>
+- Student Volunteer: <span style="color:#007acc">SOSP'24</span>

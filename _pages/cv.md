@@ -7,4 +7,4 @@ redirect_from:
   - /resume
 ---
 
-Please find my CV here.
+Please find my CV [here](/files/Kiran_Hombal_Resume.pdf).
