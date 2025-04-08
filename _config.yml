@@ -21,7 +21,7 @@ repository               : "KSTARK007/KSTARK007.github.io"
 #               Additional customization can be done by editing /_includes/author-profile.html
 author:
   # Biographic information
-  avatar           : "profile_pic.png"
+  avatar           : "profile.png"
   name             : "Kiran Hombal"
   pronouns         : "He/Him"
   bio              : "Research Focus: Dissaggredated memory, Distributed Storage Systems"
