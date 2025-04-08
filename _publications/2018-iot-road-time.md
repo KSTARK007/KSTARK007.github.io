@@ -5,7 +5,7 @@ category: conferences
 permalink: /publication/2018-iot-road-time
 excerpt: "A lightweight IoT-based system for detecting and analyzing road travel times in real-time urban environments."
 date: 2018-08-01
-venue: "IEEE ICACCI 2018"
+venue: "IEEE ICACCI"
 slidesurl: ''
 paperurl: ''
 citation: 'Kiran Hombal, Prajwal Nadagouda, Priya Nayak, Preet Shah, Roopa Ravish'
