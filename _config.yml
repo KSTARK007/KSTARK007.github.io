@@ -22,13 +22,11 @@ repository               : "KSTARK007/KSTARK007.github.io"
 author:
   # Biographic information
   avatar           : "profile.png"
-  name             : "Your Sidebar Name"
-  pronouns         : # example: "she/her"  
-  bio              : "Short biography for the left-hand sidebar"
-  location         : "Earth"
-  employer         : "Red Brick University"
-  uri              : # URL
-  email            : "none@example.org" 
+  name             : "Kiran Hombal"
+  pronouns         : "He/Him"
+  bio              : "Research Focus: Dissaggredated memory, Distributed Storage Systems"
+  location         : "Champaign, IL"
+  email            : "kiranhombal98@gmail.com"
 
   # Academic websites
   arxiv            : # URL - Update with the correct link to your profile
@@ -49,7 +47,7 @@ author:
   stackoverflow    : # User number or user number and name (i.e., use "1" or "1/jeff-atwood")    
 
   # Social media
-  bluesky          : "bsky.app" # Replace this with you Bluesky username
+  bluesky          : # Replace this with you Bluesky username
   facebook         : # Username
   flickr           : # Username
   foursquare       : # Username
@@ -58,7 +56,7 @@ author:
   keybase          : # Username
   instagram        : # Username
   lastfm           : # Username
-  linkedin         : # Username
+  linkedin         : "kiranhombal"
   mastodon         : # URL
   medium           : # URL
   pinterest        : # Username
@@ -78,8 +76,8 @@ author:
 publication_category:
   books:
     title: 'Books'
-  manuscripts:
-    title: 'Journal Articles'    
+  under_submission:
+    title: 'Under Submission'    
   conferences:
     title: 'Conference Papers'
 
