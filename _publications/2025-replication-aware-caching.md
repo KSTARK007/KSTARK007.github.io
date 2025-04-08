@@ -5,7 +5,7 @@ category: under_submission
 permalink: /publication/2025-replication-aware-caching
 excerpt: "This work introduces Replication-Aware Caching (RAC), a unified caching layer to reduce redundancy in replicated storage systems."
 date: 2025-01-01
-venue: ""
+venue: "FAST (Under Submission)"
 slidesurl: ''
 paperurl: ''
 citation: 'Kiran Hombal, Henry Zhu, Shreesha G. Bhat, Ramnatthan Alagappan, Aishwarya Ganesan. (2025).'
