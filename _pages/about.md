@@ -9,7 +9,7 @@ redirect_from:
 
 I am a **3rd** year Ph.D. student in Computer Science at the University of Illinois Urbana-Champaign (**UIUC**), where I work with Prof. [**Aishwarya Ganesan**](https://aishwaryaganesan.github.io/) and Prof. [**Ramnatthan Alagappan**](https://ramalagappan.github.io/) in the [**DASSL Lab**](https://dassl-uiuc.github.io/). My research interests lie in **Dissaggregated Memeory** and **Distributed Storage Systems**.
 
-## What I've been up to lately
+<!-- ## What I've been up to lately
 
 - Exploring how Shared-CXL can reshape the design of distributed systems and coordination primitives.
 
@@ -19,7 +19,7 @@ I am a **3rd** year Ph.D. student in Computer Science at the University of Illin
 
 - Supercharging OS page caching with emerging hardware.
 
-- Teaming up with folks at **ARCANA Research Group** to cook up a **clustering-based caching algorithm** that finds hidden memory access patterns most people miss.
+- Teaming up with folks at **ARCANA Research Group** to cook up a **clustering-based caching algorithm** that finds hidden memory access patterns most people miss. -->
 
 
 Before joining UIUC, I spent **3.5 years at VMware R&D** as a Kernel Developer on the **Core Storage team**, where I worked on NVMe, iSCSI, and vSCSI components inside the ESXi kernel.
