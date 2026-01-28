@@ -7,7 +7,7 @@ redirect_from:
   - /about.html
 ---
 
-I am a **3rd** year Ph.D. student in Computer Science at the University of Illinois Urbana-Champaign (**UIUC**), where I work with Prof. [**Aishwarya Ganesan**](https://aishwaryaganesan.github.io/) and Prof. [**Ramnatthan Alagappan**](https://ramalagappan.github.io/) in the [**DASSL Lab**](https://dassl-uiuc.github.io/). My research interests lie in **Dissaggregated Memeory** and **Distributed Storage Systems**.
+I am a **3rd** year Ph.D. student in Computer Science at the University of Illinois Urbana-Champaign (**UIUC**), where I work with Prof. [**Aishwarya Ganesan**](https://aishwaryaganesan.github.io/) and Prof. [**Ramnatthan Alagappan**](https://ramalagappan.github.io/) in the [**DASSL Lab**](https://dassl-uiuc.github.io/). My research interests lie in **Dissaggregated Memory** and **Distributed Storage Systems**.
 
 ## What I've been up to lately
 
