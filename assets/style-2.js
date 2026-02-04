@@ -140,8 +140,8 @@ function fetchGitHubStars(repoUrl, elementId) {
 // Fetch stars for each repository when the page loads
 $(document).ready(function() {
     // Fetch stars for SpecLog artifact
-    fetchGitHubStars('https://github.com/dassl-uiuc/speclog-artifact', 'speclog-stars');
+    // fetchGitHubStars('https://github.com/dassl-uiuc/speclog-artifact', 'speclog-stars');
     
     // Fetch stars for LazyLog artifact
-    fetchGitHubStars('https://github.com/dassl-uiuc/LazyLog-Artifact', 'lazylog-stars');
+    // fetchGitHubStars('https://github.com/dassl-uiuc/LazyLog-Artifact', 'lazylog-stars');
 });
