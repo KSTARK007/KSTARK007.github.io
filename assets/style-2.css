@@ -1,14 +1,81 @@
-.instilogo {
-    height: 50px;
-    filter: grayscale(20%);
+/* Font faces */
+@font-face {
+    font-family: 'CMU Sans Serif';
+    src: url('fonts/cmunss.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'CMU Sans Serif';
+    src: url('fonts/cmunsx.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Base styles */
+body {
+    font-family: 'CMU Sans Serif', 'Computer Modern', 'Arial', sans-serif;
+    color: #333333;
+    font-weight: 300;
+    font-size: 14pt;
+    /* background-color: #FFFEF9; */
+}
+
+a {
+    color: #0000CD;
+    text-decoration: none;
 }
 
 a:hover {
-    /* font-weight: 400; */
     text-decoration: none;
     transition-duration: 0.3s;
     transition-timing-function: linear;
-    /* color: #444; */
+}
+
+/* Menu styles */
+.menulink {
+    color: #333333;
+    font-size: 16pt;
+    text-decoration: none;
+}
+
+.menulink:hover {
+    color: #111;
+}
+
+/* Header and name styles */
+.header {
+    color: #000000;
+    font-size: 18pt;
+    text-decoration: none;
+}
+
+.name {
+    color: #000000;
+    font-size: 23pt;
+}
+
+/* Publication styles */
+.papertitle {
+    color: #000000;
+    font-size: 15pt;
+    font-weight: 700;
+    text-decoration: none;
+    font-style: normal;
+}
+
+.thisauthor {
+    color: #000000;
+    text-decoration: underline;
+    font-style: normal;
+}
+
+.instilogo {
+    height: 50px;
+    filter: grayscale(20%);
 }
 
 
@@ -35,14 +102,6 @@ a:hover {
 
 .paper {
     border-left: 1px solid #ddd;
-}
-
-.menulink:hover {
-    color: #111;
-}
-
-body {
-    background-color: #FFFEF9;
 }
 
 .profilepic {
