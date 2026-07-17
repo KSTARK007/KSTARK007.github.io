@@ -1,7 +1,7 @@
-/* Font faces */
+/* Font faces — WOFF2 subset to Latin-1 + General Punctuation (see README). */
 @font-face {
     font-family: 'CMU Sans Serif';
-    src: url('fonts/cmunss.ttf') format('truetype');
+    src: url('fonts/cmunss.woff2') format('woff2');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -9,7 +9,7 @@
 
 @font-face {
     font-family: 'CMU Sans Serif';
-    src: url('fonts/cmunsx.ttf') format('truetype');
+    src: url('fonts/cmunsx.woff2') format('woff2');
     font-weight: 700;
     font-style: normal;
     font-display: swap;
@@ -22,6 +22,23 @@ body {
     font-weight: 300;
     font-size: 14pt;
     /* background-color: #FFFEF9; */
+}
+
+/* Keyboard-only skip link: offscreen until focused. */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+    padding: 10px 16px;
+    background: #ffffff;
+    color: #0000CD;
+    border: 1px solid #0000CD;
+}
+
+.skip-link:focus {
+    left: 8px;
+    top: 8px;
 }
 
 a {
@@ -46,7 +63,18 @@ a:hover {
     color: #111;
 }
 
-/* Header and name styles */
+/* Header and name styles.
+   These are real <h1>/<h2> elements for document structure. Bootstrap's reboot
+   gives headings font-weight:500, line-height:1.2 and margin-bottom:.5rem; the
+   overrides below restore the paragraph metrics this layout was built around. */
+.header,
+.name {
+    font-weight: 300;
+    line-height: 1.5;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
 .header {
     color: #000000;
     font-size: 18pt;
@@ -73,26 +101,12 @@ a:hover {
     font-style: normal;
 }
 
-.instilogo {
-    height: 50px;
-    filter: grayscale(20%);
-}
-
-
-.noter {
-    font-size: 9pt;
-}
-
 .tagsep {
     padding: 4px;
 }
 
 .tag {
     padding-right: 2px;
-}
-
-.confshort {
-    font-weight: 300;
 }
 
 .conf {
@@ -126,7 +140,9 @@ a:hover {
     }
 }
 
-@media only screen and (max-width: 900px) {
+/* Stacked layout: below Bootstrap's md breakpoint the grid collapses to one
+   column and .fixed-posi stops being fixed, so the desktop top spacing goes. */
+@media only screen and (max-width: 767.98px) {
     .allstuff {
         padding-top: 0px !important;
     }
@@ -136,17 +152,27 @@ a:hover {
     }
 
     .profilepic {
-        width: 200px;
-        border-radius: 30%;
         padding-top: 0px !important;
         padding-bottom: 0px !important;
-        /* filter: grayscale(100%); */
     }
 
     .menur {
         padding-top: 18px !important;
     }
 
+}
+
+/* Photo width is a separate concern from the stacked layout, and has to follow
+   the column instead: below Bootstrap's lg tier the container is 720px, so
+   .col-md-4 leaves only ~210px of content width. .fixed-posi is position:fixed,
+   so its containing block is the viewport and it shrink-to-fits its widest
+   child -- the photo. At the default 280px it therefore spills 70px past the
+   column and runs under the text. Capping it keeps the sidebar inside its
+   column. Above 992px the container is 960px (~290px of column) and 280px fits. */
+@media only screen and (max-width: 991.98px) {
+    .profilepic {
+        width: 200px;
+    }
 }
 
 .news-item {
@@ -224,18 +250,6 @@ a:hover {
     font-size: 0.8em;
     color: gray;
     margin-top: 5px;
-}
-
-/* GitHub Stars styling */
-.github-stars {
-    font-size: 0.9em;
-    color: #666;
-    margin-left: 5px;
-    display: none; /* Initially hidden, shown when data loads */
-}
-
-.github-stars:hover {
-    color: #333;
 }
 
 /* Template Credit styling */

@@ -4,51 +4,91 @@
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="PhD Student, UIUC">
+    <meta name="description" content="Kiran Hombal is a PhD student in Computer Science at the University of Illinois Urbana-Champaign, working on disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.">
     <meta name="author" content="Kiran Hombal">
     <meta name="theme-color" content="#222222">
+    <link rel="canonical" href="https://kstark007.github.io/">
 
     <link rel="apple-touch-icon" sizes="180x180" href="images/nicons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="images/nicons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/nicons/favicon-16x16.png">
 
-    <!-- Preconnect to CDNs for parallel fetching -->
-    <link rel="preconnect" href="https://stackpath.bootstrapcdn.com" crossorigin>
-    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <!-- Open Graph / Twitter: renders a card when the page is shared. -->
+    <meta property="og:type" content="profile">
+    <meta property="og:url" content="https://kstark007.github.io/">
+    <meta property="og:title" content="Kiran Hombal">
+    <meta property="og:description" content="PhD student at UIUC working on disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.">
+    <meta property="og:image" content="https://kstark007.github.io/images/profile.jpg">
+    <meta property="og:image:alt" content="Kiran Hombal">
+    <meta property="og:site_name" content="Kiran Hombal">
+    <meta property="profile:first_name" content="Kiran">
+    <meta property="profile:last_name" content="Hombal">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Kiran Hombal">
+    <meta name="twitter:description" content="PhD student at UIUC working on disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.">
+    <meta name="twitter:image" content="https://kstark007.github.io/images/profile.jpg">
 
-    <!-- Preload critical assets in parallel -->
+    <!-- Preconnect to the Bootstrap CDN for parallel fetching -->
+    <link rel="preconnect" href="https://stackpath.bootstrapcdn.com" crossorigin>
+
+    <!-- Preload critical assets in parallel. Both font weights are preloaded:
+         the bold face sets every paper title and is the larger of the two. -->
     <link rel="preload" href="images/profile.jpg" as="image" fetchpriority="high">
-    <link rel="preload" href="assets/fonts/cmunss.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="preload" href="assets/style-2.css" as="style">
+    <link rel="preload" href="assets/fonts/cmunss.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/cmunsx.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/style-2.css?v=2" as="style">
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <link rel="stylesheet" href="assets/style-2.css">
-      
+    <!-- ?v= is bumped on edit so a cached copy is never paired with new markup. -->
+    <link rel="stylesheet" href="assets/style-2.css?v=2">
+
     <title>Kiran Hombal</title>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Kiran Hombal",
+      "url": "https://kstark007.github.io/",
+      "image": "https://kstark007.github.io/images/profile.jpg",
+      "jobTitle": "PhD Student in Computer Science",
+      "affiliation": {
+        "@type": "CollegeOrUniversity",
+        "name": "University of Illinois Urbana-Champaign",
+        "url": "https://cs.illinois.edu/"
+      },
+      "knowsAbout": ["Disaggregated Memory", "CXL", "Distributed Storage Systems", "Operating Systems"],
+      "sameAs": [
+        "https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ",
+        "https://github.com/KSTARK007",
+        "https://www.linkedin.com/in/kiranhombal"
+      ]
+    }
+    </script>
   </head>
   <body>
-    <!-- <h1>Hello, world!</h1> -->
+    <a class="skip-link" href="#main">Skip to main content</a>
     <div class="container pt-5 allstuffp">
         <div class="row pt-5 allstuff">
             <div class="col-md-4 pt-5">
-                <div class="fixed-posi">
-                <p class="name">Kiran Hombal</p>
+                <header class="fixed-posi">
+                <h1 class="name">Kiran Hombal</h1>
                 <img src="images/profile.jpg" class="profilepic pt-3 pb-2" alt="Kiran Hombal" fetchpriority="high" decoding="async">
-                <div class="pt-5 menur"><a class="menulink" target="_blank" href="assets/cv.pdf">curriculum vitae</a></div>
-                <div class=""><a class="menulink" target="_blank" href="https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ">google scholar</a></div>
-                <div class=""><a class="menulink" target="_blank" href="mailto:kiranhombal98@gmail.com">email</a></div>
-                <div class=""><a class="menulink" target="_blank" href="https://github.com/KSTARK007">github</a></div>
-                <div class=""><a class="menulink" target="_blank" href="https://www.linkedin.com/in/kiranhombal">linkedin</a></div>
-                
+                <nav aria-label="Profile links">
+                <div class="pt-5 menur"><a class="menulink" target="_blank" rel="noopener" href="assets/cv.pdf">curriculum vitae</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ">google scholar</a></div>
+                <div class=""><a class="menulink" href="mailto:kiranhombal98@gmail.com">email</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://github.com/KSTARK007">github</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://www.linkedin.com/in/kiranhombal">linkedin</a></div>
+                </nav>
 
                 <!-- <div class="pt-5">usercontext</div> -->
                 <!-- <div class="">travel history</div> -->
                 <!-- <div class="">this template</div> -->
-                </div>
+                </header>
             </div>
-            <div class="col-md-8 pt-5 about">
+            <main id="main" class="col-md-8 pt-5 about">
                 <p>I am a 3rd year PhD student in Computer Science at the <a href="https://cs.illinois.edu/">University of Illinois Urbana-Champaign</a>, where I work with <a href="https://aishwaryaganesan.github.io/">Aishwarya Ganesan</a> and <a href="https://ramalagappan.github.io/">Ramnatthan Alagappan</a> at the <a href="https://dassl-uiuc.github.io/">DASSL Lab</a>. My research interests lie in <em>Disaggregated Memory</em> and <em>Distributed Storage Systems</em>.</p>
                 <p><strong>What I've been up to lately:</strong></p>
                 <ul>
@@ -61,7 +101,7 @@
                 <p>I also interned at <a href="https://research.ece.cmu.edu/safari/people.html"><em>SAFARI @ Carnegie Mellon University</em></a>, where I worked with <a href="https://ghose.cs.illinois.edu/">Saugata Ghose</a> to build a kernel-aware MMU page prefetcher for improving real-time memory locality.</p>
                 
                 <!-- News Section -->
-                <p class="header pt-5">News</p>
+                <h2 class="header pt-5">News</h2>
 
 
                 <div class="py-2 news-scroll">
@@ -108,7 +148,7 @@
                 </div>
 
 
-                 <p class="header pt-5">Publications</p>
+                 <h2 class="header pt-5">Publications</h2>
                  <div class="py-2" id="sosp26">
                     <p class="paper my-2 pl-2">
                         <span class="papertitle">Disk-Based LSMs: An Unexpectedly Good Index for Partly Coherent CXL Memory</span><br>
@@ -123,7 +163,7 @@
                         Jiyu Hu, Seokjoo Cho*, Landon Johnson*, <span class="thisauthor">Kiran Hombal</span>, Shreesha G. Bhat, Marcos K. Aguilera, Ramnatthan Alagappan, Aishwarya Ganesan<br>
                         <span class="conf"><a href="https://www.usenix.org/conference/osdi26">OSDI'26</a> | Operating Systems Design and Implementation</span><br>
                         <span class="award">Best Paper Nominee</span><br>
-                        <a class="tag" href="assets/papers/Megalon/paper.pdf" target="_blank">pdf</a><span class="tagsep"></span><a class="tag" href="assets/papers/Megalon/slides.pdf" target="_blank">slides</a><span class="tagsep"></span><br>
+                        <a class="tag" href="assets/papers/Megalon/paper.pdf" target="_blank" rel="noopener">pdf</a><span class="tagsep"></span><a class="tag" href="assets/papers/Megalon/slides.pdf" target="_blank" rel="noopener">slides</a><span class="tagsep"></span><br>
                         <span class="footnote">*equal contribution</span>
                     </p>
                 </div>
@@ -133,7 +173,7 @@
                         <span class="papertitle">A Logically Disaggregated Cache for Replicated Storage Systems</span><br>
                         <span class="thisauthor">Kiran Hombal</span>, Henry Zhu, Shreesha G. Bhat, Neil Kaushikkar, Ramnatthan Alagappan, Aishwarya Ganesan<br>
                         <span class="conf"><a href="https://2026.eurosys.org/">EuroSys'26</a> | European Conference on Computer Systems</span><br>
-                        <a class="tag" href="assets/papers/RAC/paper.pdf" target="_blank">pdf</a><span class="tagsep"></span><a class="tag" href="assets/papers/RAC/slides.pdf" target="_blank">slides</a><span class="tagsep"></span>
+                        <a class="tag" href="assets/papers/RAC/paper.pdf" target="_blank" rel="noopener">pdf</a><span class="tagsep"></span><a class="tag" href="assets/papers/RAC/slides.pdf" target="_blank" rel="noopener">slides</a><span class="tagsep"></span>
                     </p>
                 </div>
 
@@ -155,7 +195,7 @@
 
 
                 <!-- Awards Section -->
-                <p class="header pt-5">Awards</p>
+                <h2 class="header pt-5">Awards</h2>
                 <div class="py-2">
                     <p class="service-item my-2 pl-2">
                         Presenter's Award, <span class="conf"><a href="https://cs.illinois.edu/">UIUC</a></span>
@@ -176,7 +216,7 @@
                 </div>
 
                 <!-- Service Section -->
-                <p class="header pt-5">Service</p>
+                <h2 class="header pt-5">Service</h2>
                 <div class="py-2">
                     <p class="service-item my-2 pl-2">
                         Artifact Evaluation Committee: <span class="conf"><a href="https://www.usenix.org/conference/osdi24">OSDI'24</a></span>, <span class="conf"><a href="https://www.usenix.org/conference/atc24">ATC'24</a></span>, <span class="conf"><a href="https://www.usenix.org/conference/fast25">FAST'25</a></span>, <span class="conf"><a href="https://www.usenix.org/conference/osdi25">OSDI'25</a></span>, <span class="conf"><a href="https://sigops.org/s/conferences/sosp/2025/">SOSP'25</a></span>, <span class="conf"><a href="https://www.usenix.org/conference/osdi26">OSDI'26</a></span>, <span class="conf"><a href="https://sigops.org/s/conferences/sosp/2026/">SOSP'26</a></span><br>
@@ -190,7 +230,7 @@
                 </div>
 
                 <!-- Teaching Section -->
-                <p class="header pt-5">Teaching</p>
+                <h2 class="header pt-5">Teaching</h2>
                 <div class="py-2">
                     <p class="service-item my-2 pl-2">
                         Teaching Assistant, <span class="conf">CS 511: Advanced Data Management</span>
@@ -199,24 +239,16 @@
                 </div>
 
                 <!-- Template Credit -->
-                <div class="py-5 text-center">
+                <footer class="py-5 text-center">
                     <p class="template-credit">
-                        Website Template: <a href="https://github.com/SebastinSanty/minimal-research-theme" target="_blank">minimal-research-theme</a> by <a href="https://github.com/SebastinSanty" target="_blank">SebastinSanty</a>. Thanks to <a href="https://shreesha00.github.io/" target="_blank">Shreesha G. Bhat</a> for sharing his website configuration.
+                        Website Template: <a href="https://github.com/SebastinSanty/minimal-research-theme" target="_blank" rel="noopener">minimal-research-theme</a> by <a href="https://github.com/SebastinSanty" target="_blank" rel="noopener">SebastinSanty</a>. Thanks to <a href="https://shreesha00.github.io/" target="_blank" rel="noopener">Shreesha G. Bhat</a> for sharing his website configuration.
                     </p>
-                </div>
-            </div>
+                </footer>
+            </main>
 
         </div>
     </div>
 
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <!-- Scripts loaded in parallel with defer (executes in order after HTML parsed) -->
-    <script defer src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-    <script defer src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-    <script defer src="assets/news-fit.js"></script>
+    <script defer src="assets/news-fit.js?v=2"></script>
 </body>
-  <style>
-  </style>
 </html>
