@@ -7,6 +7,9 @@
     <meta name="description" content="Kiran Hombal is a PhD student in Computer Science at the University of Illinois Urbana-Champaign, working on disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.">
     <meta name="author" content="Kiran Hombal">
     <meta name="theme-color" content="#222222">
+    <!-- Default is index,follow; stated explicitly, plus opt in to full-length
+         snippets and large image previews rather than Google's truncated default. -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="https://kstark007.github.io/">
 
     <link rel="apple-touch-icon" sizes="180x180" href="images/nicons/apple-touch-icon.png">
@@ -43,26 +46,139 @@
     <!-- ?v= is bumped on edit so a cached copy is never paired with new markup. -->
     <link rel="stylesheet" href="assets/style-2.css?v=2">
 
-    <title>Kiran Hombal</title>
+    <title>Kiran Hombal — PhD Student, UIUC</title>
 
+    <!-- Entity graph. Every claim here is also visible on the page: structured
+         data that asserts more than the rendered content is a spam signal. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Person",
-      "name": "Kiran Hombal",
-      "url": "https://kstark007.github.io/",
-      "image": "https://kstark007.github.io/images/profile.jpg",
-      "jobTitle": "PhD Student in Computer Science",
-      "affiliation": {
-        "@type": "CollegeOrUniversity",
-        "name": "University of Illinois Urbana-Champaign",
-        "url": "https://cs.illinois.edu/"
-      },
-      "knowsAbout": ["Disaggregated Memory", "CXL", "Distributed Storage Systems", "Operating Systems"],
-      "sameAs": [
-        "https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ",
-        "https://github.com/KSTARK007",
-        "https://www.linkedin.com/in/kiranhombal"
+      "@graph": [
+        {
+          "@type": "Person",
+          "@id": "https://kstark007.github.io/#kiran",
+          "name": "Kiran Hombal",
+          "givenName": "Kiran",
+          "familyName": "Hombal",
+          "url": "https://kstark007.github.io/",
+          "mainEntityOfPage": "https://kstark007.github.io/",
+          "image": "https://kstark007.github.io/images/profile.jpg",
+          "jobTitle": "PhD Student in Computer Science",
+          "description": "PhD student at the University of Illinois Urbana-Champaign researching disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.",
+          "email": "mailto:kiranhombal98@gmail.com",
+          "affiliation": [
+            {
+              "@type": "CollegeOrUniversity",
+              "name": "University of Illinois Urbana-Champaign",
+              "url": "https://cs.illinois.edu/"
+            },
+            {
+              "@type": "ResearchOrganization",
+              "name": "DASSL Lab",
+              "url": "https://dassl-uiuc.github.io/"
+            }
+          ],
+          "worksFor": {
+            "@type": "CollegeOrUniversity",
+            "name": "University of Illinois Urbana-Champaign",
+            "url": "https://cs.illinois.edu/"
+          },
+          "knowsAbout": [
+            "Disaggregated Memory",
+            "CXL",
+            "Compute Express Link",
+            "Distributed Storage Systems",
+            "Operating Systems",
+            "Page Cache",
+            "Kernel Development"
+          ],
+          "sameAs": [
+            "https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ",
+            "https://github.com/KSTARK007",
+            "https://www.linkedin.com/in/kiranhombal"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://kstark007.github.io/#website",
+          "url": "https://kstark007.github.io/",
+          "name": "Kiran Hombal",
+          "inLanguage": "en",
+          "publisher": { "@id": "https://kstark007.github.io/#kiran" }
+        },
+        {
+          "@type": "ProfilePage",
+          "@id": "https://kstark007.github.io/#page",
+          "url": "https://kstark007.github.io/",
+          "name": "Kiran Hombal — PhD Student, UIUC",
+          "isPartOf": { "@id": "https://kstark007.github.io/#website" },
+          "about": { "@id": "https://kstark007.github.io/#kiran" },
+          "primaryImageOfPage": "https://kstark007.github.io/images/profile.jpg"
+        },
+        {
+          "@type": "ScholarlyArticle",
+          "headline": "Disk-Based LSMs: An Unexpectedly Good Index for Partly Coherent CXL Memory",
+          "author": [
+            { "@id": "https://kstark007.github.io/#kiran" },
+            { "@type": "Person", "name": "Jiyu Hu" },
+            { "@type": "Person", "name": "Marcos K. Aguilera" },
+            { "@type": "Person", "name": "Ramnatthan Alagappan" },
+            { "@type": "Person", "name": "Aishwarya Ganesan" }
+          ],
+          "isPartOf": { "@type": "PublicationEvent", "name": "SOSP'26 | Symposium on Operating Systems Principles" }
+        },
+        {
+          "@type": "ScholarlyArticle",
+          "headline": "MEGALON: Efficient Data Sharing for Partly Coherent CXL Memory",
+          "author": [
+            { "@type": "Person", "name": "Jiyu Hu" },
+            { "@type": "Person", "name": "Seokjoo Cho" },
+            { "@type": "Person", "name": "Landon Johnson" },
+            { "@id": "https://kstark007.github.io/#kiran" },
+            { "@type": "Person", "name": "Shreesha G. Bhat" },
+            { "@type": "Person", "name": "Marcos K. Aguilera" },
+            { "@type": "Person", "name": "Ramnatthan Alagappan" },
+            { "@type": "Person", "name": "Aishwarya Ganesan" }
+          ],
+          "isPartOf": { "@type": "PublicationEvent", "name": "OSDI'26 | Operating Systems Design and Implementation" },
+          "url": "https://kstark007.github.io/assets/papers/Megalon/paper.pdf"
+        },
+        {
+          "@type": "ScholarlyArticle",
+          "headline": "A Logically Disaggregated Cache for Replicated Storage Systems",
+          "author": [
+            { "@id": "https://kstark007.github.io/#kiran" },
+            { "@type": "Person", "name": "Henry Zhu" },
+            { "@type": "Person", "name": "Shreesha G. Bhat" },
+            { "@type": "Person", "name": "Neil Kaushikkar" },
+            { "@type": "Person", "name": "Ramnatthan Alagappan" },
+            { "@type": "Person", "name": "Aishwarya Ganesan" }
+          ],
+          "isPartOf": { "@type": "PublicationEvent", "name": "EuroSys'26 | European Conference on Computer Systems" },
+          "url": "https://kstark007.github.io/assets/papers/RAC/paper.pdf"
+        },
+        {
+          "@type": "ScholarlyArticle",
+          "headline": "Fault-Tolerant and Distributed Page Cache",
+          "author": [
+            { "@id": "https://kstark007.github.io/#kiran" },
+            { "@type": "Person", "name": "Ramnatthan Alagappan" },
+            { "@type": "Person", "name": "Aishwarya Ganesan" }
+          ],
+          "isPartOf": { "@type": "PublicationEvent", "name": "SySDW'24 | SOSP Doctoral Workshop" }
+        },
+        {
+          "@type": "ScholarlyArticle",
+          "headline": "IoT Based Road Travel Time Detection",
+          "author": [
+            { "@id": "https://kstark007.github.io/#kiran" },
+            { "@type": "Person", "name": "Prajwal Nadagouda" },
+            { "@type": "Person", "name": "Priya Nayak" },
+            { "@type": "Person", "name": "Preet Shah" },
+            { "@type": "Person", "name": "Roopa Ravish" }
+          ],
+          "isPartOf": { "@type": "PublicationEvent", "name": "IEEE ICACCI 2018" }
+        }
       ]
     }
     </script>
