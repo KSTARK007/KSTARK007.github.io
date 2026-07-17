@@ -5,6 +5,9 @@ _site/
 # Ignore the directory for local files during development
 local/
 
+# Local-only: other people's sites cloned for reference, not part of this site
+reference/
+
 # Ignore the Gemfile that is generated
 Gemfile.lock
 
