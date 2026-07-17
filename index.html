@@ -55,48 +55,57 @@
       "@context": "https://schema.org",
       "@graph": [
         {
-          "@type": "Person",
-          "@id": "https://kstark007.github.io/#kiran",
-          "name": "Kiran Hombal",
-          "givenName": "Kiran",
-          "familyName": "Hombal",
+          "@type": "ProfilePage",
+          "@id": "https://kstark007.github.io/#page",
           "url": "https://kstark007.github.io/",
-          "mainEntityOfPage": "https://kstark007.github.io/",
-          "image": "https://kstark007.github.io/images/profile.jpg",
-          "jobTitle": "PhD Student in Computer Science",
-          "description": "PhD student at the University of Illinois Urbana-Champaign researching disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.",
-          "email": "mailto:kiranhombal98@gmail.com",
-          "affiliation": [
-            {
+          "name": "Kiran Hombal — PhD Student, UIUC",
+          "isPartOf": { "@id": "https://kstark007.github.io/#website" },
+          "primaryImageOfPage": "https://kstark007.github.io/images/profile.jpg",
+          "dateModified": "2026-07-17",
+          "mainEntity": {
+            "@type": "Person",
+            "@id": "https://kstark007.github.io/#kiran",
+            "name": "Kiran Hombal",
+            "givenName": "Kiran",
+            "familyName": "Hombal",
+            "url": "https://kstark007.github.io/",
+            "mainEntityOfPage": "https://kstark007.github.io/",
+            "image": "https://kstark007.github.io/images/profile.jpg",
+            "jobTitle": "PhD Student in Computer Science",
+            "description": "PhD student at the University of Illinois Urbana-Champaign researching disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.",
+            "email": "mailto:kiranhombal98@gmail.com",
+            "affiliation": [
+              {
+                "@type": "CollegeOrUniversity",
+                "name": "University of Illinois Urbana-Champaign",
+                "url": "https://cs.illinois.edu/"
+              },
+              {
+                "@type": "ResearchOrganization",
+                "name": "DASSL Lab",
+                "url": "https://dassl-uiuc.github.io/"
+              }
+            ],
+            "worksFor": {
               "@type": "CollegeOrUniversity",
               "name": "University of Illinois Urbana-Champaign",
               "url": "https://cs.illinois.edu/"
             },
-            {
-              "@type": "ResearchOrganization",
-              "name": "DASSL Lab",
-              "url": "https://dassl-uiuc.github.io/"
-            }
-          ],
-          "worksFor": {
-            "@type": "CollegeOrUniversity",
-            "name": "University of Illinois Urbana-Champaign",
-            "url": "https://cs.illinois.edu/"
-          },
-          "knowsAbout": [
-            "Disaggregated Memory",
-            "CXL",
-            "Compute Express Link",
-            "Distributed Storage Systems",
-            "Operating Systems",
-            "Page Cache",
-            "Kernel Development"
-          ],
-          "sameAs": [
-            "https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ",
-            "https://github.com/KSTARK007",
-            "https://www.linkedin.com/in/kiranhombal"
-          ]
+            "knowsAbout": [
+              "Disaggregated Memory",
+              "CXL",
+              "Compute Express Link",
+              "Distributed Storage Systems",
+              "Operating Systems",
+              "Page Cache",
+              "Kernel Development"
+            ],
+            "sameAs": [
+              "https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ",
+              "https://github.com/KSTARK007",
+              "https://www.linkedin.com/in/kiranhombal"
+            ]
+          }
         },
         {
           "@type": "WebSite",
@@ -105,15 +114,6 @@
           "name": "Kiran Hombal",
           "inLanguage": "en",
           "publisher": { "@id": "https://kstark007.github.io/#kiran" }
-        },
-        {
-          "@type": "ProfilePage",
-          "@id": "https://kstark007.github.io/#page",
-          "url": "https://kstark007.github.io/",
-          "name": "Kiran Hombal — PhD Student, UIUC",
-          "isPartOf": { "@id": "https://kstark007.github.io/#website" },
-          "about": { "@id": "https://kstark007.github.io/#kiran" },
-          "primaryImageOfPage": "https://kstark007.github.io/images/profile.jpg"
         },
         {
           "@type": "ScholarlyArticle",
