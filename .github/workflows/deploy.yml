@@ -1,0 +1,75 @@
+name: Deploy site to GitHub Pages
+
+# Replaces the classic "build from branch" Pages build. The only thing this
+# adds over serving the repo verbatim is stamping the last-modified dates from
+# git history at deploy time, so they can never drift the way a hand-maintained
+# literal does. Nothing is committed back: the stamp exists only in the
+# deployed copy, so the commit history stays free of bot noise.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never publish two deploys at once. An in-progress run is allowed to finish
+# rather than being cancelled part-way through publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The dates come from `git log`, so full history is required; the
+          # default shallow checkout would report the wrong commit.
+          fetch-depth: 0
+
+      - name: Stamp last-modified dates from git history
+        run: python3 .github/scripts/stamp_dates.py
+
+      - name: Assemble the publish directory
+        run: |
+          set -euo pipefail
+          # Copy explicitly rather than publishing the checkout as-is, so .git
+          # and the workflow itself are never served. reference/ is gitignored
+          # and so should never reach a checkout, but it is a local clone of
+          # someone else's site and was committed here by accident once before
+          # (it is what broke the Pages build), so exclude it outright rather
+          # than trusting .gitignore to hold.
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.git*' \
+            --exclude='.github' \
+            --exclude='_site' \
+            --exclude='reference' \
+            --exclude='README.md' \
+            ./ _site/
+          # The verification file is the one dotfile-adjacent thing that must
+          # survive: Search Console fails the moment it 404s.
+          test -f _site/google93b692f99fc0a434.html \
+            || { echo "::error::Google verification file missing from the publish directory"; exit 1; }
+          echo "Publishing:"
+          find _site -type f | sort | sed 's/^/  /'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
