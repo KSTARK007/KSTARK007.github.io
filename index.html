@@ -4,6 +4,17 @@
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2WP7YSYD5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-Y2WP7YSYD5');
+    </script>
+
     <meta name="description" content="Kiran Hombal is a PhD student in Computer Science at the University of Illinois Urbana-Champaign, working on disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.">
     <meta name="author" content="Kiran Hombal">
     <meta name="theme-color" content="#222222">
@@ -31,8 +42,11 @@
     <meta name="twitter:description" content="PhD student at UIUC working on disaggregated memory (CXL) and distributed storage systems in the DASSL Lab.">
     <meta name="twitter:image" content="https://kstark007.github.io/images/profile.jpg">
 
-    <!-- Preconnect to the Bootstrap CDN for parallel fetching -->
+    <!-- Preconnect: Bootstrap CDN, plus the Analytics origins so the async
+         gtag request starts its TCP/TLS handshake without waiting. -->
     <link rel="preconnect" href="https://stackpath.bootstrapcdn.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.google-analytics.com" crossorigin>
 
     <!-- Preload critical assets in parallel. Both font weights are preloaded:
          the bold face sets every paper title and is the larger of the two. -->
