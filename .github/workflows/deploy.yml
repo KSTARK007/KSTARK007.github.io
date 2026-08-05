@@ -69,7 +69,12 @@ jobs:
           # llms.txt from robots.txt and the blog page, and index.md from the
           # post's own <link rel="alternate">. Silent absence is the failure
           # mode worth catching, because nothing on the page looks broken.
+          # The IndexNow key file is in this list because the protocol verifies
+          # host control by fetching it. If it 404s, every submission is
+          # rejected, and the only symptom is search engines quietly not being
+          # told about new posts.
           for f in llms.txt robots.txt sitemap.xml blog/feed.xml \
+                   ff93bf625b094e4f9ba2f616af28cebe.txt \
                    blog/agentic-coding-in-the-wild/index.md \
                    blog/agentic-coding-in-the-wild/llms.txt \
                    blog/agentic-coding-in-the-wild/opengraph-image.png; do
@@ -92,3 +97,30 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Runs only once the new copy is actually live: telling a search engine a URL
+  # changed while the old copy is still being served just buys a crawl of the
+  # old copy. Reaches Bing, Yandex, Seznam, Naver and Yep through one request.
+  # Google does not participate in IndexNow, so it still learns about changes
+  # from sitemap.xml alone.
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The script submits only what changed in this push, which means
+          # diffing against the previous head; a shallow checkout would not
+          # have it.
+          fetch-depth: 0
+
+      - name: Tell the IndexNow engines what changed
+        env:
+          # Empty on workflow_dispatch, and all zeroes on a branch's first
+          # push. The script treats either as "no usable base" and submits
+          # every listed URL rather than nothing.
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/indexnow.py

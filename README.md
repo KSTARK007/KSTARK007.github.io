@@ -22,6 +22,26 @@ rsync -a --exclude=.git ./ /tmp/site-test/ && cp -R .git /tmp/site-test/.git
 cd /tmp/site-test && python3 .github/scripts/stamp_dates.py
 ```
 
+## IndexNow
+
+After a deploy goes live, `.github/scripts/indexnow.py` tells the IndexNow
+engines which URLs changed, so they recrawl on notice rather than on their own
+schedule. One request to `api.indexnow.org` reaches Bing, Yandex, Seznam, Naver
+and Yep. **Google does not participate** and never adopted the protocol, so it
+still learns about changes from `sitemap.xml` alone.
+
+Only URLs whose files actually changed in the push are submitted, and only if
+they are listed in the sitemap — a changed JS chunk or an edited script is not a
+page. With no usable base commit (a manual run, a first push) it submits every
+listed URL rather than nothing.
+
+`ff93bf625b094e4f9ba2f616af28cebe.txt` at the repo root is the key file. It is
+not a secret: the protocol proves host control by requiring the key to be
+readable at `https://<host>/<key>.txt`, so it is public by construction, and the
+most anyone can do with it is ask a search engine to recrawl this site. If it
+ever 404s every submission is rejected, which is why the deploy asserts it
+reached the publish directory.
+
 `robots.txt` allows every crawler, AI crawlers included, and disallows only the
 framework build artifacts inside an exported post (`_next/`, the `__next.*.txt`
 React Server Component payloads, and the export's 404 routes), which would
