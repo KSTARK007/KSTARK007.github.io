@@ -13,6 +13,10 @@ environments; index structures for databases on emerging hardware; OS page
 caching on emerging hardware; and clustering-based caching that finds hidden
 memory access patterns.
 
+Also writes agentic workload analysis: measuring what AI coding agents actually
+do to a serving system, and what that implies for scheduling, KV-cache
+retention and capacity planning.
+
 ## Blog
 
 Posts are listed newest first. Each has a markdown rendition alongside it,

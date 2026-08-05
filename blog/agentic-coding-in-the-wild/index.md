@@ -8,7 +8,7 @@ based_on_paper: "Agentic Coding in the Wild: Characterizing GitHub Copilot at Pr
 paper_authors: "Banruo Liu, Haoran Qiu, Íñigo Goiri, Rodrigo Fonseca, Ricardo Bianchini, Esha Choukse"
 paper_arxiv: "https://arxiv.org/abs/2608.00101"
 paper_arxiv_id: "2608.00101"
-keywords: ["AI coding agents", "GitHub Copilot", "LLM serving", "KV cache", "workload characterization", "prefix caching", "context compaction"]
+keywords: ["agentic workload analysis", "agentic coding", "AI coding agents", "GitHub Copilot", "LLM serving", "KV cache", "workload characterization", "prefix caching", "context compaction"]
 ---
 
 # Agentic Coding in the Wild
