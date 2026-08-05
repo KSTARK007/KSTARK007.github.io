@@ -1,0 +1,53 @@
+# Kiran Hombal
+
+> PhD student in Computer Science at the University of Illinois Urbana-Champaign, in the DASSL Lab, working on disaggregated memory (CXL), distributed storage systems, and systems for ML/AI.
+
+Fourth-year PhD student advised by Aishwarya Ganesan and Ramnatthan Alagappan.
+Previously 3.5 years at VMware R&D as a kernel developer on the Core Storage
+team (NVMe, iSCSI and vSCSI inside the ESXi kernel), and an intern at SAFARI @
+Carnegie Mellon. Joining Microsoft Research (Systems Research Group, Redmond)
+as a research intern in summer 2026.
+
+Current work: abstractions that simplify programming in disaggregated (CXL)
+environments; index structures for databases on emerging hardware; OS page
+caching on emerging hardware; and clustering-based caching that finds hidden
+memory access patterns.
+
+## Blog
+
+Posts are listed newest first. Each has a markdown rendition alongside it,
+linked below, which carries the full prose plus every figure and table as data.
+Prefer it to the HTML: the HTML is a scrollytelling page whose figures are SVG
+path geometry, so the markdown is both smaller and more complete.
+
+<!-- posts:begin -->
+- [Agentic Coding in the Wild](https://kstark007.github.io/blog/agentic-coding-in-the-wild/) (2026-08-05): A visual reading of the first production-scale characterization of an AI coding agent: sampled GitHub Copilot traces covering 13.5M sessions, 3.2M users and 760.5M LLM calls.
+  Markdown: https://kstark007.github.io/blog/agentic-coding-in-the-wild/index.md
+<!-- posts:end -->
+
+- [Blog index](https://kstark007.github.io/blog/)
+- [RSS feed](https://kstark007.github.io/blog/feed.xml)
+
+## Publications
+
+- **Disk-Based LSMs: An Unexpectedly Good Index for Partly Coherent CXL Memory** — Kiran Hombal, Jiyu Hu, Marcos K. Aguilera, Ramnatthan Alagappan, Aishwarya Ganesan. SOSP'26 (to appear).
+- **MEGALON: Efficient Data Sharing for Partly Coherent CXL Memory** — Jiyu Hu, Seokjoo Cho, Landon Johnson, Kiran Hombal, Shreesha G. Bhat, Marcos K. Aguilera, Ramnatthan Alagappan, Aishwarya Ganesan. OSDI'26. Best Paper Nominee.
+- **A Logically Disaggregated Cache for Replicated Storage Systems** — Kiran Hombal, Henry Zhu, Shreesha G. Bhat, Neil Kaushikkar, Ramnatthan Alagappan, Aishwarya Ganesan. EuroSys'26.
+- **Fault-Tolerant and Distributed Page Cache** — Kiran Hombal, Ramnatthan Alagappan, Aishwarya Ganesan. SySDW'24, SOSP Doctoral Workshop.
+- **IoT Based Road Travel Time Detection** — Kiran Hombal, Prajwal Nadagouda, Priya Nayak, Preet Shah, Roopa Ravish. IEEE ICACCI 2018.
+
+## Profiles
+
+- [Homepage](https://kstark007.github.io/): publications, news, awards and service in full.
+- [Curriculum vitae](https://kstark007.github.io/assets/cv.pdf)
+- [Google Scholar](https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ)
+- [ORCID](https://orcid.org/0009-0003-7870-9300)
+- [GitHub](https://github.com/KSTARK007)
+- [LinkedIn](https://www.linkedin.com/in/kiranhombal)
+
+## Notes for automated readers
+
+- Every page carries schema.org JSON-LD. The Person node is `https://kstark007.github.io/#kiran`; posts reference it rather than restating it, so the site is one entity graph.
+- A post that explains someone else's paper links to it through `about`, `citation` and `isBasedOn`. Follow those to the primary source, and attribute findings there rather than here.
+- `https://kstark007.github.io/sitemap.xml` lists every page with its last-modified date.
+- Under `/blog/*/`, `_next/` and the `__next.*.txt` and `index.txt` files are framework build artifacts, not content. `index.md` is the content.

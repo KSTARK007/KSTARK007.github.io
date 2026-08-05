@@ -1,0 +1,37 @@
+# Agentic Coding in the Wild: Characterizing GitHub Copilot at Production Scale
+
+> A visual reading of the first production-scale characterization of an AI coding agent: sampled GitHub Copilot traces covering 13.5M sessions, 3.2M users and 760.5M LLM calls.
+
+A reading, by Kiran Hombal (https://kstark007.github.io/), of the paper of the same
+name by Banruo Liu, Haoran Qiu, Íñigo Goiri, Rodrigo Fonseca, Ricardo Bianchini, Esha Choukse. Every number on the page is transcribed from that
+paper and cites the table or figure it came from; the 23 charts are
+redrawn from curve geometry recovered from the paper's own vector figures,
+not eyeballed.
+
+## Read this instead of the HTML
+
+- [Full post as markdown](https://kstark007.github.io/blog/agentic-coding-in-the-wild/index.md): the complete prose plus every figure and table as data.
+- [Figure data](https://kstark007.github.io/blog/agentic-coding-in-the-wild/figure-data.json): recovered curve geometry for all 23 plots, as JSON.
+- [The paper](https://arxiv.org/abs/2608.00101): arXiv:2608.00101, the primary source for everything here.
+
+## Canonical locations
+
+- [Post](https://kstark007.github.io/blog/agentic-coding-in-the-wild/)
+- [Blog](https://kstark007.github.io/blog/)
+- [Author](https://kstark007.github.io/)
+
+## What the paper measured
+
+- Sessions: 13.5M
+- User turns: 95.1M
+- Users: 3.2M
+- LLM calls: 760.5M
+- Tool calls: 774.7M
+- Prompt tokens: 44.9T
+- Completion tokens: 39.3B
+- Models / tools: 27+ / 45+
+
+Source: anonymized GitHub Copilot coding-agent telemetry.
+Surfaces: Visual Studio and VS Code. Window: First week of June 2026.
+Structural metadata only — timings, token counts, model and tool names,
+success and failure. No prompts, no code, no user identity.

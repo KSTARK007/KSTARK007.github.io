@@ -1,4 +1,25 @@
+# Everything here is public and meant to be read, by people and by machines
+# alike. AI crawlers - GPTBot, ClaudeBot, PerplexityBot, Google-Extended,
+# OAI-SearchBot and the rest - are covered by the group below and are welcome.
+# They are deliberately not given groups of their own: robots.txt groups do not
+# inherit, so a named group would have to repeat every rule here, and the copies
+# would drift apart the first time one of them changed.
+#
+# llms.txt is an orientation written for automated readers. Each blog post also
+# has an index.md alongside it that is far cheaper to read than the HTML.
+
 User-agent: *
 Allow: /
+
+# Framework build artifacts inside an exported post. These are not content:
+# _next/ is hashed JS, CSS and fonts, and the __next.*.txt and index.txt files
+# are React Server Component payloads that restate the entire page in a form
+# nothing but the client router can use. Left crawlable they would be a second,
+# unreadable copy of every post competing with the post itself.
+Disallow: /blog/*/_next/
+Disallow: /blog/*/__next.
+Disallow: /blog/*/index.txt
+Disallow: /blog/*/_not-found/
+Disallow: /blog/*/404.html
 
 Sitemap: https://kstark007.github.io/sitemap.xml

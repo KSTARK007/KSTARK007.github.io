@@ -15,11 +15,15 @@
       gtag('config', 'G-Y2WP7YSYD5');
     </script>
 
-    <meta name="description" content="Notes from Kiran Hombal on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.">
+    <meta name="description" content="Notes and visual readings from Kiran Hombal on computer systems — AI coding agents and LLM serving, disaggregated memory (CXL), and distributed storage.">
     <meta name="author" content="Kiran Hombal">
     <meta name="theme-color" content="#222222">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="https://kstark007.github.io/blog/">
+    <!-- Feed discovery: how a reader subscribes without being asked to, and
+         the one route that does not depend on a crawler choosing to revisit.
+         Generated at deploy time from the posts' own metadata. -->
+    <link rel="alternate" type="application/rss+xml" title="Blog — Kiran Hombal" href="feed.xml">
 
     <link rel="apple-touch-icon" sizes="180x180" href="../images/nicons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="../images/nicons/favicon-32x32.png">
@@ -29,13 +33,13 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://kstark007.github.io/blog/">
     <meta property="og:title" content="Blog — Kiran Hombal">
-    <meta property="og:description" content="Notes on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.">
+    <meta property="og:description" content="Notes and visual readings on computer systems — AI coding agents and LLM serving, disaggregated memory (CXL), and distributed storage.">
     <meta property="og:image" content="https://kstark007.github.io/images/profile.jpg">
     <meta property="og:image:alt" content="Kiran Hombal">
     <meta property="og:site_name" content="Kiran Hombal">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Blog — Kiran Hombal">
-    <meta name="twitter:description" content="Notes on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.">
+    <meta name="twitter:description" content="Notes and visual readings on computer systems — AI coding agents and LLM serving, disaggregated memory (CXL), and distributed storage.">
     <meta name="twitter:image" content="https://kstark007.github.io/images/profile.jpg">
 
     <link rel="preconnect" href="https://stackpath.bootstrapcdn.com" crossorigin>
@@ -66,7 +70,7 @@
           "@id": "https://kstark007.github.io/blog/#blog",
           "url": "https://kstark007.github.io/blog/",
           "name": "Blog — Kiran Hombal",
-          "description": "Notes on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.",
+          "description": "Notes and visual readings on computer systems — AI coding agents and LLM serving, disaggregated memory (CXL), and distributed storage.",
           "inLanguage": "en",
           "isPartOf": { "@id": "https://kstark007.github.io/#website" },
           "author": { "@id": "https://kstark007.github.io/#kiran" },
@@ -78,6 +82,24 @@
               "headline": "Agentic Coding in the Wild",
               "url": "https://kstark007.github.io/blog/agentic-coding-in-the-wild/",
               "datePublished": "2026-08-05T09:00:00-05:00"
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://kstark007.github.io/blog/#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Kiran Hombal",
+              "item": "https://kstark007.github.io/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Blog",
+              "item": "https://kstark007.github.io/blog/"
             }
           ]
         }
@@ -118,6 +140,14 @@
                         <span class="date">August 5, 2026</span>
                     </div>
                 </div>
+
+                <!-- Both of these are for readers who are not browsers: the
+                     feed for anything that subscribes, and llms.txt for models
+                     and agents, which points on to each post's index.md. -->
+                <p class="pt-4"><small>
+                    Subscribe by <a href="feed.xml">RSS</a>.
+                    Automated readers: see <a href="../llms.txt">llms.txt</a>.
+                </small></p>
             </main>
 
         </div>

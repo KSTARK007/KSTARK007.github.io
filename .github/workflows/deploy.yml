@@ -64,6 +64,18 @@ jobs:
           # survive: Search Console fails the moment it 404s.
           test -f _site/google93b692f99fc0a434.html \
             || { echo "::error::Google verification file missing from the publish directory"; exit 1; }
+          # The discovery files are each linked from somewhere that would 404
+          # without them: feed.xml from the blog's <link rel="alternate">,
+          # llms.txt from robots.txt and the blog page, and index.md from the
+          # post's own <link rel="alternate">. Silent absence is the failure
+          # mode worth catching, because nothing on the page looks broken.
+          for f in llms.txt robots.txt sitemap.xml blog/feed.xml \
+                   blog/agentic-coding-in-the-wild/index.md \
+                   blog/agentic-coding-in-the-wild/llms.txt \
+                   blog/agentic-coding-in-the-wild/opengraph-image.png; do
+            test -f "_site/$f" \
+              || { echo "::error::$f missing from the publish directory"; exit 1; }
+          done
           echo "Publishing:"
           find _site -type f | sort | sed 's/^/  /'
 
