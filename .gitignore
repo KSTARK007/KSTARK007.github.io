@@ -14,3 +14,8 @@ Gemfile.lock
 # Ingore files created by npm
 node_modules
 package-lock.json
+
+# Source archives dropped under blog/ while preparing a post. Everything under
+# blog/ is published verbatim, so an archive left here would be served to the
+# public; ignoring it keeps it out of the deployed copy as well as out of git.
+blog/**/*.zip

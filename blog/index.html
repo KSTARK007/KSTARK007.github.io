@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2WP7YSYD5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-Y2WP7YSYD5');
+    </script>
+
+    <meta name="description" content="Notes from Kiran Hombal on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.">
+    <meta name="author" content="Kiran Hombal">
+    <meta name="theme-color" content="#222222">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <link rel="canonical" href="https://kstark007.github.io/blog/">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="../images/nicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../images/nicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../images/nicons/favicon-16x16.png">
+
+    <!-- Open Graph / Twitter: renders a card when the page is shared. -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://kstark007.github.io/blog/">
+    <meta property="og:title" content="Blog — Kiran Hombal">
+    <meta property="og:description" content="Notes on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.">
+    <meta property="og:image" content="https://kstark007.github.io/images/profile.jpg">
+    <meta property="og:image:alt" content="Kiran Hombal">
+    <meta property="og:site_name" content="Kiran Hombal">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Blog — Kiran Hombal">
+    <meta name="twitter:description" content="Notes on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.">
+    <meta name="twitter:image" content="https://kstark007.github.io/images/profile.jpg">
+
+    <link rel="preconnect" href="https://stackpath.bootstrapcdn.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.google-analytics.com" crossorigin>
+
+    <link rel="preload" href="../images/profile.jpg" as="image" fetchpriority="high">
+    <link rel="preload" href="../assets/fonts/cmunss.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../assets/fonts/cmunsx.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../assets/style-2.css?v=3" as="style">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <!-- ?v= is bumped on edit so a cached copy is never paired with new markup. -->
+    <link rel="stylesheet" href="../assets/style-2.css?v=3">
+
+    <title>Blog — Kiran Hombal</title>
+
+    <!-- The Blog node points back at the Person and WebSite declared on the
+         homepage by @id, so the entity graph stays single-sourced. Every
+         blogPost listed here is also rendered on the page below. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Blog",
+          "@id": "https://kstark007.github.io/blog/#blog",
+          "url": "https://kstark007.github.io/blog/",
+          "name": "Blog — Kiran Hombal",
+          "description": "Notes on systems research — disaggregated memory (CXL), distributed storage, and the occasional debugging story.",
+          "inLanguage": "en",
+          "isPartOf": { "@id": "https://kstark007.github.io/#website" },
+          "author": { "@id": "https://kstark007.github.io/#kiran" },
+          "publisher": { "@id": "https://kstark007.github.io/#kiran" },
+          "blogPost": [
+            {
+              "@type": "BlogPosting",
+              "@id": "https://kstark007.github.io/blog/agentic-coding-in-the-wild/#post",
+              "headline": "Agentic Coding in the Wild",
+              "url": "https://kstark007.github.io/blog/agentic-coding-in-the-wild/",
+              "datePublished": "2026-08-05T09:00:00-05:00"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <div class="container pt-5 allstuffp">
+        <div class="row pt-5 allstuff">
+            <div class="col-md-4 pt-5">
+                <header class="fixed-posi">
+                <p class="name"><a href="../">Kiran Hombal</a></p>
+                <img src="../images/profile.jpg" class="profilepic pt-3 pb-2" alt="Kiran Hombal" fetchpriority="high" decoding="async">
+                <nav aria-label="Profile links">
+                <div class="pt-5 menur"><a class="menulink" href="./">blog</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="../assets/cv.pdf">curriculum vitae</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://scholar.google.com/citations?user=eyQ0CQ0AAAAJ">google scholar</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://orcid.org/0009-0003-7870-9300">orcid</a></div>
+                <div class=""><a class="menulink" href="mailto:kiranhombal98@gmail.com">email</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://github.com/KSTARK007">github</a></div>
+                <div class=""><a class="menulink" target="_blank" rel="noopener" href="https://www.linkedin.com/in/kiranhombal">linkedin</a></div>
+                </nav>
+                </header>
+            </div>
+            <main id="main" class="col-md-8 pt-5 about">
+                <h1 class="header">Blog</h1>
+                <p>Occasional notes on systems research — things that surprised me, measurements that did not say what I expected, and the odd debugging story.</p>
+
+                <!-- Posts, newest first. A post is either a single HTML file in
+                     this directory or, as with the one below, a self-contained
+                     static export in its own subdirectory. -->
+                <div class="py-2">
+                    <div class="post-item my-2 pl-2">
+                        <a class="post-title" href="agentic-coding-in-the-wild/">Agentic Coding in the Wild</a>
+                        <span class="post-blurb">A visual reading of the first production-scale characterization of an AI coding agent — 13.5M GitHub Copilot sessions, 3.2M users, 760.5M LLM calls.</span>
+                        <span class="date">August 5, 2026</span>
+                    </div>
+                </div>
+
+                <!-- Template Credit -->
+                <footer class="py-5 text-center">
+                    <p class="template-credit">
+                        Website Template: <a href="https://github.com/SebastinSanty/minimal-research-theme" target="_blank" rel="noopener">minimal-research-theme</a> by <a href="https://github.com/SebastinSanty" target="_blank" rel="noopener">SebastinSanty</a>. Thanks to <a href="https://shreesha00.github.io/" target="_blank" rel="noopener">Shreesha G. Bhat</a> for sharing his website configuration.
+                    </p>
+                </footer>
+            </main>
+
+        </div>
+    </div>
+</body>
+</html>

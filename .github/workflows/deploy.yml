@@ -44,6 +44,11 @@ jobs:
           # someone else's site and was committed here by accident once before
           # (it is what broke the Pages build), so exclude it outright rather
           # than trusting .gitignore to hold.
+          # local/ holds working notes and *.zip the source archives a post is
+          # prepared from. Everything under blog/ is published verbatim, so
+          # either one left in the tree would be served to the public.
+          # .gitignore already keeps them out of the checkout; excluding them
+          # here too is the same belt-and-braces as reference/.
           mkdir -p _site
           rsync -a \
             --exclude='.git' \
@@ -52,6 +57,8 @@ jobs:
             --exclude='_site' \
             --exclude='reference' \
             --exclude='README.md' \
+            --exclude='local' \
+            --exclude='*.zip' \
             ./ _site/
           # The verification file is the one dotfile-adjacent thing that must
           # survive: Search Console fails the moment it 404s.

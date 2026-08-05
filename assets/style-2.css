@@ -252,6 +252,163 @@ a:hover {
     margin-top: 5px;
 }
 
+/* Blog index. The post cards reuse the hairline-border idiom that News,
+   Publications and Service already use, so the section introduces no visual
+   vocabulary of its own. Date reuses .date. */
+.post-item {
+    border-left: 1px solid #ddd;
+    padding-left: 10px;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.post-title {
+    display: block;
+    color: #000000;
+    font-size: 15pt;
+    font-weight: 700;
+}
+
+.post-title:hover {
+    color: #0000CD;
+}
+
+.post-blurb {
+    display: block;
+    color: #333333;
+}
+
+/* On subpages the name is a link home rather than the page's <h1>, which is
+   the post or section title instead. Styled to sit still until hovered. */
+.name a {
+    color: #000000;
+}
+
+.name a:hover {
+    color: #0000CD;
+}
+
+/* Individual post: back link, title block, then body typography. */
+.post-back {
+    display: inline-block;
+    color: #777777;
+    font-size: 11pt;
+    margin-bottom: 1.25rem;
+}
+
+.post-back:hover {
+    color: #333333;
+}
+
+.post-heading {
+    color: #000000;
+    font-size: 20pt;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+}
+
+.post-date {
+    color: #777777;
+    font-size: 10pt;
+    margin-bottom: 2rem;
+}
+
+/* Measure cap: prose is far longer here than anywhere else on the site, and
+   the .col-md-8 column alone is wider than is comfortable to read. */
+.post-body {
+    max-width: 70ch;
+}
+
+.post-body h2 {
+    color: #000000;
+    font-size: 16pt;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Body copy is 14pt, so a third-level heading cannot go below it -- it leans on
+   weight rather than size to sit under h2. */
+.post-body h3 {
+    color: #000000;
+    font-size: 14pt;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.post-body p,
+.post-body li {
+    line-height: 1.7;
+}
+
+.post-body ul,
+.post-body ol {
+    padding-left: 1.25rem;
+}
+
+.post-body li {
+    margin-bottom: 0.35rem;
+}
+
+.post-body blockquote {
+    border-left: 1px solid #ddd;
+    padding-left: 14px;
+    margin: 1.5rem 0;
+    color: #555555;
+}
+
+.post-body blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+.post-body code {
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.82em;
+    background-color: #f7f7f7;
+    border: 1px solid #eeeeee;
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: #333333;
+}
+
+.post-body pre {
+    background-color: #f7f7f7;
+    border: 1px solid #eeeeee;
+    border-radius: 3px;
+    padding: 12px 14px;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+}
+
+/* Inside a <pre> the block already carries the frame, so the inline chip
+   styling above has to be undone or it double-draws. */
+.post-body pre code {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    font-size: 0.8em;
+    line-height: 1.55;
+}
+
+.post-body img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem auto;
+}
+
+.post-body hr {
+    border: 0;
+    border-top: 1px solid #eeeeee;
+    margin: 2rem 0;
+}
+
 /* Template Credit styling */
 .template-credit {
     font-size: 0.85em;
