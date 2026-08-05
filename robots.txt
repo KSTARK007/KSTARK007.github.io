@@ -22,4 +22,10 @@ Disallow: /blog/*/index.txt
 Disallow: /blog/*/_not-found/
 Disallow: /blog/*/404.html
 
+# A copy of the source paper, kept because the figure-extraction scripts read
+# it, and shipped only because it sits in the export's public directory. It is
+# linked from nowhere and it is not ours: arXiv holds the canonical copy, and
+# indexing this one would put a duplicate in front of the authors' own.
+Disallow: /blog/agentic-coding-in-the-wild/agentic-coding-in-the-wild.pdf
+
 Sitemap: https://kstark007.github.io/sitemap.xml
