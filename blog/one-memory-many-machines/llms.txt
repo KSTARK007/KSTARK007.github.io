@@ -1,0 +1,37 @@
+# One Memory, Many Machines: A field guide to shared CXL memory
+
+> What shared CXL memory is, why hardware coherence covers only a sliver of it, and how to share data on it anyway: a general-audience walk from the memory wall to our lab's Megalon (OSDI '26) and Prism (SOSP '26).
+
+A general-audience explainer by Kiran Hombal and Jiyu Hu of shared CXL memory,
+based on the authors' papers Megalon (OSDI 2026, best-paper
+nominee) and Prism (SOSP 2026) and a talk they gave at ByteDance.
+Every number on the page names its source. Values read off a paper
+figure are labeled as such in the figure's caption.
+
+## Read this instead of the HTML
+
+- [Full post as markdown](https://kstark007.github.io/blog/one-memory-many-machines/index.md): the complete prose plus every figure as data.
+- [Megalon artifact](https://github.com/dassl-uiuc/MEGALON-artifact): the open-source implementation.
+
+## Canonical locations
+
+- [Post](https://kstark007.github.io/blog/one-memory-many-machines/)
+- [Blog](https://kstark007.github.io/blog/)
+- [Kiran Hombal](https://kstark007.github.io/)
+- [Jiyu Hu](https://jiyuuuhuuu.github.io/)
+- [Megalon paper (PDF)](https://kstark007.github.io/assets/papers/Megalon/paper.pdf)
+- [Prism paper (PDF)](https://kstark007.github.io/assets/papers/Prism/paper.pdf)
+
+## The one-paragraph version
+
+CXL 3.x lets several hosts map the same terabytes of memory. In the
+hardware model both papers target, only a few hundred MB stay coherent
+across hosts (the SCR); the terabytes beyond (the LNR) can silently serve
+stale caches. Megalon shares data anyway by splitting the metadata:
+replicate the big, cold index per host, keep tiny hot coherence records
+in the SCR, and order everything through a shared log in CXL, for up to
+10x the prior approach under writes and 15x on reads. Prism shows that
+disk-born LSMs are the right index for this memory because their
+updatable surface area is tiny, adds a Bounded Updatable Layer sized to
+the SCR, and beats ported in-memory indexes by up to 9.4x and a
+Tigon-style index by up to 15.1x.

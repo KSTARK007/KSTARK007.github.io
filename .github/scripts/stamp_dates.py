@@ -113,6 +113,25 @@ def check_post_dates(path, post):
              f"dateModified ({modified}) - is the post dated in the future?")
 
 
+def author_names(post, graph):
+    """The post's author names, in byline order, resolved through the graph.
+
+    `author` is a Person node, a reference to one (`{"@id": ...}`), or a list
+    of either. A post with no resolvable author falls back to the site owner,
+    so the feed always carries a name.
+    """
+    nodes = {n.get("@id"): n for n in graph if n.get("@id")}
+    authors = post.get("author", [])
+    if isinstance(authors, dict):
+        authors = [authors]
+    names = []
+    for a in authors:
+        node = nodes.get(a.get("@id"), a) if isinstance(a, dict) else {}
+        if node.get("name"):
+            names.append(node["name"])
+    return names or [AUTHOR_NAME]
+
+
 def stamp_post(path, page_dt, exported):
     """Stamp one post's last-modified date and return what it says about itself.
 
@@ -136,12 +155,13 @@ def stamp_post(path, page_dt, exported):
         )
     open(path, "w", encoding="utf-8").write(text)
 
-    post = next((n for n in load_ld(text, path)["@graph"]
-                 if n.get("@type") == "BlogPosting"), None)
+    graph = load_ld(text, path)["@graph"]
+    post = next((n for n in graph if n.get("@type") == "BlogPosting"), None)
     if post is None:
         fail(f"{path}: no BlogPosting node in the JSON-LD. Every page in "
              f"{BLOG_DIR}/ other than the index is expected to be a post.")
     check_post_dates(path, post)
+    post["_authors"] = author_names(post, graph)
 
     for field in ("headline", "description"):
         if not post.get(field):
@@ -201,6 +221,7 @@ def stamp_blog():
             "description": post["description"] if post else None,
             "published": post["datePublished"] if post else None,
             "modified": post["dateModified"] if post else None,
+            "authors": post["_authors"] if post else None,
         })
 
     # The index's Blog node lists its posts, and that list is hand-written while
@@ -329,14 +350,20 @@ def write_feed(records):
         f"      <guid isPermaLink=\"true\">{r['url']}</guid>\n"
         f"      <description>{xml_escape(r['description'])}</description>\n"
         f"      <pubDate>{rfc2822(r['published'])}</pubDate>\n"
-        f"      <author>{AUTHOR_EMAIL} ({AUTHOR_NAME})</author>\n"
-        f"    </item>\n"
+        # RSS's own <author> wants an email address, so it names the site
+        # owner; every author, in byline order, goes in Dublin Core creators.
+        + (f"      <author>{AUTHOR_EMAIL} ({AUTHOR_NAME})</author>\n"
+           if AUTHOR_NAME in r["authors"] else "")
+        + "".join(f"      <dc:creator>{xml_escape(name)}</dc:creator>\n"
+                  for name in r["authors"])
+        + f"    </item>\n"
         for r in posts
     )
     built = rfc2822(max(r["modified"] for r in posts)) if posts else ""
     feed = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"\n'
+        '     xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
         "  <channel>\n"
         f"    <title>{BLOG_TITLE}</title>\n"
         f"    <link>{SITE}blog/</link>\n"

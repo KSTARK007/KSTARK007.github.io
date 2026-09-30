@@ -22,3 +22,13 @@ blog/**/*.zip
 # Python bytecode from running the deploy scripts locally
 __pycache__/
 *.pyc
+
+# macOS folder metadata
+.DS_Store
+
+# Local working material that is never part of the site: scratch files,
+# planning documents, and review reports. blog/review-output/ sits under
+# blog/, which is published verbatim, so it must stay out of the deploy too.
+tmp/
+docs/
+blog/review-output/

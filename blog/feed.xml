@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Blog — Kiran Hombal</title>
     <link>https://kstark007.github.io/blog/</link>
     <description>Notes and visual readings on computer systems — AI coding agents and LLM serving, disaggregated memory (CXL), and distributed storage.</description>
     <language>en</language>
-    <lastBuildDate>Wed, 05 Aug 2026 04:19:52 -0700</lastBuildDate>
+    <lastBuildDate>Tue, 29 Sep 2026 09:00:00 -0500</lastBuildDate>
     <atom:link href="https://kstark007.github.io/blog/feed.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>One Memory, Many Machines</title>
+      <link>https://kstark007.github.io/blog/one-memory-many-machines/</link>
+      <guid isPermaLink="true">https://kstark007.github.io/blog/one-memory-many-machines/</guid>
+      <description>What shared CXL memory is, why hardware coherence covers only a sliver of it, and how to share data on it anyway: a general-audience walk from the memory wall to our lab's Megalon (OSDI '26) and Prism (SOSP '26).</description>
+      <pubDate>Tue, 25 Aug 2026 09:00:00 -0500</pubDate>
+      <author>kiranhombal98@gmail.com (Kiran Hombal)</author>
+      <dc:creator>Kiran Hombal</dc:creator>
+      <dc:creator>Jiyu Hu</dc:creator>
+    </item>
     <item>
       <title>Agentic Coding in the Wild</title>
       <link>https://kstark007.github.io/blog/agentic-coding-in-the-wild/</link>
@@ -14,6 +25,7 @@
       <description>A visual reading of the first production-scale characterization of an AI coding agent: sampled GitHub Copilot traces covering 13.5M sessions, 3.2M users and 760.5M LLM calls.</description>
       <pubDate>Wed, 05 Aug 2026 09:00:00 -0500</pubDate>
       <author>kiranhombal98@gmail.com (Kiran Hombal)</author>
+      <dc:creator>Kiran Hombal</dc:creator>
     </item>
   </channel>
 </rss>

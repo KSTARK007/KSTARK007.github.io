@@ -77,7 +77,10 @@ jobs:
                    ff93bf625b094e4f9ba2f616af28cebe.txt \
                    blog/agentic-coding-in-the-wild/index.md \
                    blog/agentic-coding-in-the-wild/llms.txt \
-                   blog/agentic-coding-in-the-wild/opengraph-image.png; do
+                   blog/agentic-coding-in-the-wild/opengraph-image.png \
+                   blog/one-memory-many-machines/index.md \
+                   blog/one-memory-many-machines/llms.txt \
+                   blog/one-memory-many-machines/opengraph-image.png; do
             test -f "_site/$f" \
               || { echo "::error::$f missing from the publish directory"; exit 1; }
           done

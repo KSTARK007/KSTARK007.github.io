@@ -25,6 +25,8 @@ Prefer it to the HTML: the HTML is a scrollytelling page whose figures are SVG
 path geometry, so the markdown is both smaller and more complete.
 
 <!-- posts:begin -->
+- [One Memory, Many Machines](https://kstark007.github.io/blog/one-memory-many-machines/) (2026-08-25): What shared CXL memory is, why hardware coherence covers only a sliver of it, and how to share data on it anyway: a general-audience walk from the memory wall to our lab's Megalon (OSDI '26) and Prism (SOSP '26).
+  Markdown: https://kstark007.github.io/blog/one-memory-many-machines/index.md
 - [Agentic Coding in the Wild](https://kstark007.github.io/blog/agentic-coding-in-the-wild/) (2026-08-05): A visual reading of the first production-scale characterization of an AI coding agent: sampled GitHub Copilot traces covering 13.5M sessions, 3.2M users and 760.5M LLM calls.
   Markdown: https://kstark007.github.io/blog/agentic-coding-in-the-wild/index.md
 <!-- posts:end -->
