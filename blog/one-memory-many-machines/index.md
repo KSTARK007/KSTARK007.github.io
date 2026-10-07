@@ -1,5 +1,5 @@
 ---
-title: "One Memory, Many Machines: A field guide to shared CXL memory"
+title: "The Partly Coherent CXL: A field guide to shared CXL memory"
 author: "Kiran Hombal, Jiyu Hu"
 authors:
   - name: "Kiran Hombal"
@@ -17,7 +17,7 @@ megalon_artifact: "https://github.com/dassl-uiuc/MEGALON-artifact"
 keywords: ["CXL", "Compute Express Link", "shared memory", "cache coherence", "partly coherent memory", "memory disaggregation", "Megalon", "Prism", "LSM tree", "distributed systems"]
 ---
 
-# One Memory, Many Machines
+# The Partly Coherent CXL
 
 *A field guide to shared CXL memory*
 
@@ -27,17 +27,13 @@ Canonical HTML version: https://kstark007.github.io/blog/one-memory-many-machine
 
 ---
 
-<a id="what-is-this"></a>
+## TL;DR
 
-## 1. Memory that belongs to no one machine
+CXL 3.0 enables multiple TBs of memory to be shared between multiple hosts, opening new potential for distributed applications such as databases and KV stores. However, it is reported that only a small portion of the shared CXL memory region (hundreds of MBs) can support cross-host cache coherence due to hardware constraints, leaving the remaining TBs of memory non-cache-coherent across hosts.
 
-What this post covers, who it is for, and the one question it answers.
+**Megalon** enables coherently sharing a large number of objects in the partly coherent CXL memory by utilizing the software coherence approach. It does so efficiently through **split metadata sharing**, which uses the precious coherent region smartly by storing only the performance-crucial coherence metadata.
 
-Most servers keep their memory to themselves; sharing data means messages over a network and a copy on each side. **CXL** breaks that habit. Several machines plug into the _same_ memory and read and write it with the instructions they use for their own DRAM. No network stack on the access path, no serialization, no copies.
-
-This post grew out of a talk we gave at ByteDance and two papers from our lab at UIUC. Both start from the question the hardware leaves open: _the memory is shared, but can you actually share data on it?_ The answer is harder, and more fun, than it looks.
-
-We assume no prior exposure to CXL or caches. If you know what RAM is, you have everything you need. In a hurry? [Jump to Megalon](#megalon); a short recap waits there.
+**Prism** explores how to build a shared index on top of partly coherent CXL in a principled manner. It makes a core observation that the LSM, a data structure originally optimized for disk accesses, is an unexpectedly great fit for CXL indexes. The reason lies in the LSM’s small **updatable surface area**.
 
 - **Papers**: 2
 
@@ -47,65 +43,19 @@ OSDI '26 · SOSP '26
 
 Megalon at OSDI '26
 
-- **Peak speedup**: 15.1×
-
-Prism over a Tigon-style index
-
-- **Shared capacity**: TBs
-
-per device, in the model both papers target
-
-<a id="memory-wall"></a>
-
-## 2. The memory wall
-
-Start with the problem that makes CXL worth inventing.
-
-### Cores multiplied. Memory per core shrank.
-
-Talk, slide 5
-
-- CPU core count
-- Memory capacity per core
-- projected by the source
-
-Core count against memory capacity per core, indexed to 2012 = 100, log scale. A qualitative redraw of the Micron chart in our talk; the source marks 2024 and 2025 as projections, drawn dashed. The shapes are the argument.
-
-Show the numbers
-
-Cores multiplied. Memory per core shrank.
-
-- Year · Core count · Memory / core · Projected ·
-- 2012 · 100 · 100 · ·
-- 2014 · 130 · 96 · ·
-- 2016 · 160 · 88 · ·
-- 2018 · 250 · 76 · ·
-- 2020 · 400 · 62 · ·
-- 2022 · 600 · 50 · ·
-- 2024 · 1100 · 38 · yes ·
-- 2025 · 1600 · 32 · yes ·
-
-A line chart from 2012 to 2025. CPU core count rises steeply to roughly sixteen times its 2012 level, while memory capacity per core falls to roughly a third of its 2012 level. The last two points are the source's projections.
-
-Server CPUs went from a dozen cores in 2012 to well over a hundred today. DRAM capacity per core has been _falling_ for a decade. Two limits bind at once. First, DRAM density grows more slowly than core counts. Second, a CPU cannot simply add memory channels: each DDR channel takes roughly 200 signal pins, and pins are among the scarcest resources on a package.
-
-Practitioners feel this as a wall. Databases, caches, and feature stores want more memory per machine every year, and the machine cannot offer it. Meanwhile a lot of memory sits _stranded_: a server has rented out all its cores while gigabytes of its DRAM stay idle. Microsoft measured up to 25% of Azure’s DRAM stranded this way, with DRAM up to 50% of server cost.
-
-Unfortunately, you cannot fix a pin-count problem with software. You need a new wire.
-
 <a id="enter-cxl"></a>
 
-## 3. Enter CXL
+## 1. Intro to CXL
 
-Memory over PCIe, spoken to with ordinary loads and stores.
+A great new memory technology
 
-**Compute Express Link (CXL)** is that wire. It is an open standard built on PCIe, the lanes that already carry your GPU and NVMe drives. A CXL memory device is a box of DRAM on PCIe, and the trick is _how_ the CPU talks to it: not with I/O commands like a disk, but with ordinary loads and stores. Once mapped, it is just more memory to a program.
+**The memory wall.** Server CPUs went from a dozen cores in 2012 to well over a hundred today, yet DRAM capacity per core has been falling for a decade: a CPU cannot simply add memory channels, because each DDR channel takes roughly 200 signal pins. You cannot fix a pin-count problem with software. You need a new wire.
+
+**Compute Express Link (CXL)** is that wire. It is an open standard built on PCIe. A CXL memory device is a box of DRAM on PCIe, and the CPU issues ordinary memory loads and stores, not I/O operations like a disk. Once mapped, it is just more memory to a program.
 
 The economics come from the pins. A DDR5-6400 channel moves ~51 GB/s over ~200 signal pins. An x16 PCIe 5.0 link moves ~63 GB/s per direction over 64 signal pins, and PCIe 6.0 doubles that. Per pin, the serial link carries roughly 4× the bandwidth, so a CPU can afford far more of them. That is how CXL adds terabytes where the DDR bus cannot.
 
-The price is distance. Local DRAM answers in roughly 110 ns; CXL memory takes two to three times that, about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which software tolerates every day. It is still far closer than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
-
-Expansion products ship today from Samsung and Micron, and recent AMD and Intel CPUs speak CXL natively. Multi-host sharing, the subject of the rest of this post, is newer; we will be clear about what ships and what is only expected.
+The price for better scalability is the latency. Local DRAM answers in roughly 110 ns; CXL memory takes two to three times that, about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which software tolerates every day. It is still far closer than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
 
 ### Two ways out of the socket
 
@@ -138,9 +88,9 @@ A log-scale ladder of approximate access latencies from L1 cache at about one na
 
 <a id="shared-memory"></a>
 
-## 4. One memory, many machines
+### CXL 3.0: cross-host sharing
 
-The three CXL capabilities that matter here, and the one that changes the rules.
+From CXL 1.0 to CXL 3.0, from memory expansion to memory sharing
 
 CXL 1.1 (2019) does _expansion_: one host, more memory. CXL 2.0 (2020) adds switching and _pooling_: a rack-level pool carved into segments, each still owned by one host at a time. CXL 3.0 (2022) and its successors (3.2 in 2024, 4.0 in late 2025) add the radical part: **multi-host shared memory**. Several machines map the _same_ region into their address spaces, at the same time, and all of them issue loads and stores against it.
 
@@ -148,7 +98,7 @@ Stop and appreciate how strange that is. Two servers with separate power supplie
 
 That is shared CXL memory, the “one memory, many machines” of the title. If it sounds too good to be true, it is, exactly once. To see the catch we need a short detour into the deepest habit CPUs have: caching.
 
-### Three generations, three relationships to memory
+#### Three generations, three relationships to memory
 
 CXL Consortium spec releases
 
@@ -158,7 +108,7 @@ An interactive diagram showing CXL 1.1 with one host and one expander, CXL 2.0 w
 
 <a id="coherence"></a>
 
-## 5. Cache coherence, from zero
+## 2. Cache coherence, from zero
 
 Why CPUs cache, why caching breaks sharing, and the protocol that fixes it inside one machine.
 
@@ -184,7 +134,7 @@ An interactive step-through of the MESI protocol: three CPUs read value A and ho
 
 <a id="partly-coherent"></a>
 
-## 6. The catch: partly coherent memory
+## 3. The catch: partly coherent memory
 
 The compromise the hardware is expected to make, and what silently breaks inside it.
 
@@ -222,7 +172,7 @@ An animation of two hosts sharing a value in the non-coherent region. Host 1 cac
 
 <a id="software-coherence"></a>
 
-## 7. Sharing anyway, and how it collapses
+## 4. Sharing anyway, and how it collapses
 
 If the hardware will not keep caches honest in the LNR, software has to. It works, until it churns.
 
@@ -275,7 +225,7 @@ A line chart of throughput versus dataset size. With unlimited SCR, throughput h
 
 Paper one · OSDI 2026 · Best-paper nominee
 
-## 8. Megalon
+## 5. Megalon
 
 Share the data. Split the metadata.
 
@@ -344,7 +294,7 @@ Grouped bars of throughput for 4.8, 7.2, 12 and 24 million shared objects under 
 
 <a id="index-problem"></a>
 
-## 9. The index problem
+## 6. The index problem
 
 Sharing objects is not enough. A store also has to find them.
 
@@ -376,7 +326,7 @@ An interactive slider over index node size. At small node sizes, tens of million
 
 Paper two · SOSP 2026
 
-## 10. Prism
+## 7. Prism
 
 The right index was on disk all along.
 
@@ -606,10 +556,10 @@ The systems and results are our papers’; the simplifications for a general aud
 
 ### Cite this post
 
-Kiran Hombal and Jiyu Hu. "One Memory, Many Machines: A field guide to shared CXL memory." kstark007.github.io, August 2026.
+Kiran Hombal and Jiyu Hu. "The Partly Coherent CXL: A field guide to shared CXL memory." kstark007.github.io, August 2026.
 
 @misc{hombal2026onememory,
- title = {One Memory, Many Machines: A field guide to shared CXL memory},
+ title = {The Partly Coherent CXL: A field guide to shared CXL memory},
  author = {Kiran Hombal and Jiyu Hu},
  year = {2026},
  url = {https://kstark007.github.io/blog/one-memory-many-machines/},
@@ -628,21 +578,6 @@ Every figure on the page, as data. Rendered from the same constants the page its
 | --- | --- | --- |
 | Papers | 2 | OSDI '26 · SOSP '26 |
 | Best-paper nominee | 1 | Megalon at OSDI '26 |
-| Peak speedup | 15.1× | Prism over a Tigon-style index |
-| Shared capacity | TBs | per device, in the model both papers target |
-
-### The memory wall (indexed, 2012 = 100)
-
-| year | cores | memPerCore | projected |
-| --- | --- | --- | --- |
-| 2012 | 100 | 100 | false |
-| 2014 | 130 | 96 | false |
-| 2016 | 160 | 88 | false |
-| 2018 | 250 | 76 | false |
-| 2020 | 400 | 62 | false |
-| 2022 | 600 | 50 | false |
-| 2024 | 1100 | 38 | true |
-| 2025 | 1600 | 32 | true |
 
 ### Pin efficiency, DDR vs CXL
 
@@ -867,7 +802,7 @@ Every figure on the page, as data. Rendered from the same constants the page its
 
 ```bibtex
 @misc{hombal2026onememory,
-  title  = {One Memory, Many Machines: A field guide to shared CXL memory},
+  title  = {The Partly Coherent CXL: A field guide to shared CXL memory},
   author = {Kiran Hombal and Jiyu Hu},
   year   = {2026},
   url    = {https://kstark007.github.io/blog/one-memory-many-machines/},
