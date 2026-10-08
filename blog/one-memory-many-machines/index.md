@@ -31,7 +31,7 @@ Canonical HTML version: https://kstark007.github.io/blog/one-memory-many-machine
 
 CXL 3.0 enables multiple TBs of memory to be shared between multiple hosts, opening new potential for distributed applications such as databases and KV stores. However, it is reported that only a small portion of the shared CXL memory region (hundreds of MBs) can support cross-host cache coherence due to hardware constraints, leaving the remaining TBs of memory non-cache-coherent across hosts.
 
-**Megalon** enables coherently sharing a large number of objects in the partly coherent CXL memory by utilizing the software coherence approach. It does so efficiently through **split metadata sharing**, which uses the precious coherent region smartly by storing only the performance-crucial coherence metadata.
+**Megalon** enables coherently sharing a large number of data objects in the partly coherent CXL memory by utilizing the software coherence approach. It does so efficiently through **split metadata sharing**, which uses the precious coherent region smartly by storing only the performance-crucial coherence metadata.
 
 **Prism** explores how to build a shared index on top of partly coherent CXL in a principled manner. It makes a core observation that the LSM, a data structure originally optimized for disk accesses, is an unexpectedly great fit for CXL indexes. The reason lies in the LSM’s small **updatable surface area**.
 
@@ -51,7 +51,7 @@ A great new memory technology
 
 **The memory wall.** Server CPUs went from a dozen cores in 2012 to well over a hundred today, yet DRAM capacity per core has been falling for a decade: a CPU cannot simply add memory channels, because each DDR channel takes roughly 200 signal pins. You cannot fix a pin-count problem with software. You need a new wire.
 
-**Compute Express Link (CXL)** is that wire. It is an open standard built on PCIe. A CXL memory device is a box of DRAM on PCIe, and the CPU issues ordinary memory loads and stores, not I/O operations like a disk. Once mapped, it is just more memory to a program.
+**Compute Express Link (CXL)** is that wire. It is an open standard built on PCIe. A CXL memory device is a box of DRAM on PCIe, and the CPU issues direct memory loads and stores, not I/O operations like a disk. Once mapped, it is just more memory to a program.
 
 The economics come from the pins. A DDR5-6400 channel moves ~51 GB/s over ~200 signal pins. An x16 PCIe 5.0 link moves ~63 GB/s per direction over 64 signal pins, and PCIe 6.0 doubles that. Per pin, the serial link carries roughly 4× the bandwidth, so a CPU can afford far more of them. That is how CXL adds terabytes where the DDR bus cannot.
 
@@ -92,11 +92,11 @@ A log-scale ladder of approximate access latencies from L1 cache at about one na
 
 From CXL 1.0 to CXL 3.0, from memory expansion to memory sharing
 
-CXL 1.1 (2019) does _expansion_: one host, more memory. CXL 2.0 (2020) adds switching and _pooling_: a rack-level pool carved into segments, each still owned by one host at a time. CXL 3.0 (2022) and its successors (3.2 in 2024, 4.0 in late 2025) add the radical part: **multi-host shared memory**. Several machines map the _same_ region into their address spaces, at the same time, and all of them issue loads and stores against it.
+CXL 1.1 (2019) does _expansion_: one host, more memory. CXL 2.0 (2020) adds switching and _memory pooling_: a rack-level pool carved into segments, each still owned by one host at a time. CXL 3.0 (2022) and its successors (3.2 in 2024, 4.0 in late 2025) add the radical part: **multi-host shared memory**. Several machines map the _same_ region into their address spaces so to share data efficiently over a unified piece of memory.
 
-Stop and appreciate how strange that is. Two servers with separate power supplies, operating systems, and failure domains dereference pointers into the same DRAM. A structure written by host 1 is _already there_ when host 2 looks. Databases, key-value stores, and file systems could keep one copy of their data where every host can reach it.
+Now with CXL 3.0 shared memory, databases, key-value stores, and file systems could keep one copy of their data which every host can reach. Accessing shared data can be a single memory operation instead of a trip over the network.
 
-That is shared CXL memory, the “one memory, many machines” of the title. If it sounds too good to be true, it is, exactly once. To see the catch we need a short detour into the deepest habit CPUs have: caching.
+If it sounds too good to be true, it is, due to a catch of CXL 3.0 that prevents data from being shared correctly.
 
 #### Three generations, three relationships to memory
 
@@ -106,47 +106,25 @@ Toggle the generations. Expansion gives one host more memory; pooling gives each
 
 An interactive diagram showing CXL 1.1 with one host and one expander, CXL 2.0 with a switch assigning pool segments to individual hosts, and CXL 3.0 with four hosts mapping one shared region simultaneously.
 
-<a id="coherence"></a>
-
-## 2. Cache coherence, from zero
-
-Why CPUs cache, why caching breaks sharing, and the protocol that fixes it inside one machine.
-
-Most loads never reach DRAM. A trip to memory costs about 100 ns, so every CPU keeps recently used data in small, fast, private **caches** and serves most loads from there.
-
-Caching creates an obvious hazard: copies. If CPU 1 has cached value A and CPU 2 changes A in memory, CPU 1’s copy is now wrong. Within one machine, hardware solves this with **cache coherence**: the CPUs watch each other’s memory traffic and follow a protocol that keeps every cached copy of a location consistent.
-
-The classic protocol is **MESI**, after the four states a cached line can be in: Modified, Exclusive, Shared, Invalid. (It is also the Illinois protocol; it was invented where our lab sits.) You do not need the details, but the _feel_ of it matters for everything that follows. Step through the widget once.
-
-The takeaway is that coherence is not free. A write to shared data invalidates every other cache’s copy, and to do that the hardware tracks who might hold one. The bookkeeping grows with the number of caches and the amount of memory tracked. Hold that thought.
-
-### MESI, one write, no lies
-
-Talk, slides 12–29
-
-Step 1 / 10 · Three CPUs, one memory
-
-Memory holds A = 1. No CPU has it cached yet.
-
-Three CPUs share value A through their private caches. Play the sequence: three reads spread copies, one write destroys them, and the writeback repairs memory. States: **M**odified · **E**xclusive · **S**hared · **I**nvalid.
-
-An interactive step-through of the MESI protocol: three CPUs read value A and hold Shared copies; CPU 2 invalidates the others and writes A equals 2, holding a Modified line; CPU 3's next read forces a writeback, leaving both with Shared copies of the new value.
-
 <a id="partly-coherent"></a>
 
-## 3. The catch: partly coherent memory
+## 2. The catch: partly coherent memory
 
-The compromise the hardware is expected to make, and what silently breaks inside it.
+CXL 3.0 lacks full cross-host cache coherence, and it causes problems...
+
+### Background · Cache coherence
+
+Most memory loads/stores never reach DRAM. A trip to memory costs about 100 ns, so every CPU keeps recently used data in small, fast, private **caches** and serves most loads/catches most stores from there. Caching creates copies, and copies can go stale: if one CPU changes a value that another has cached, the other’s copy is now wrong.
+
+Inside one machine you never see this, because the hardware does the heavy lifting. **Cache coherence** keeps every cached copy of a location consistent: before a CPU writes, the hardware finds the other copies and invalidates them, so every CPU always sees one coherent view of memory. Software gets that for free. The hardware pays for it in bookkeeping, which grows with the number of caches and the amount of memory tracked.
 
 Now scale that bookkeeping up to what CXL 3.x allows: several _machines_, dozens of caches each, sharing _terabytes_. To behave like memory inside one machine, the hardware would have to run coherence across hosts, over PCIe, for every cache line. The vendors are blunt about the arithmetic: AMD, Micron, and Samsung all say the machinery involved stops scaling somewhere between dozens and a few hundred megabytes.
 
-So the hardware is expected to compromise, in what we call the **partly coherent model**, which both of our papers target. The memory splits in two. A **small coherent region**, the _SCR_, is a few hundred MB that hardware keeps coherent across hosts, like the widget above. A **large non-coherent region**, the _LNR_, is the remaining several TB, where the hardware does nothing about coherence across hosts. Each host’s own cache coherence still works; it just never hears from the others.
+So the hardware is expected to compromise, in what we call the **partly coherent model**, which both of our papers target. The memory splits in two. A **small coherent region**, the _SCR_, is a few hundred MB that hardware keeps coherent across hosts. A **large non-coherent region**, the _LNR_, is the remaining several TB, where the hardware does nothing about coherence across hosts. Each host’s own cache coherence still works; it just never hears from the others.
 
-What goes wrong in the LNR? Exactly what MESI exists to prevent, except now nobody prevents it. Host 1 reads object A and caches it. Host 2 overwrites it with A′. On one machine that write would invalidate host 1’s copy; across machines, in the LNR, _no invalidation is ever sent_. Host 1 reads again, its cache says “I have that,” and it returns the stale value. Silently. Your database just served data that is no longer fresh.
+What goes wrong in the LNR? Exactly what cache coherence exists to prevent, except now nobody prevents it. Host 1 reads object A and caches it. Host 2 overwrites it with A′. On one machine that write would invalidate host 1’s copy; across machines, in the LNR, _no invalidation is ever sent_. Host 1 reads again, its cache says “I have that,” and it returns the stale value. Silently. Your database just served data that is no longer fresh.
 
-Why this post exists
-
-Sharing _memory_ is a hardware problem with a hardware solution. Sharing _data_ correctly, on memory that is only partly coherent, is a software problem, and it is wide open. Both of our papers live in this gap.
+One could simply use the SCR to share data, but a few hundred megabytes shared among many hosts is nothing; the whole point was the terabytes. Rejected. Therefore, we need a better approach to share data coherently in CXL.
 
 ### The two regions, side by side
 
@@ -172,19 +150,19 @@ An animation of two hosts sharing a value in the non-coherent region. Host 1 cac
 
 <a id="software-coherence"></a>
 
-## 4. Sharing anyway, and how it collapses
+## 3. A software approach, and how it collapses
 
-If the hardware will not keep caches honest in the LNR, software has to. It works, until it churns.
+Cache coherence can be managed in software, but a naive approach takes a performance hit.
 
-The first idea everyone has is to keep shared data inside the SCR. But a few hundred megabytes shared among many hosts is nothing; the whole point was the terabytes. Rejected.
+A better idea keeps the _data_ in the vast LNR and small **metadata** in the SCR to track the coherence, where hardware coherence makes the metadata itself trustworthy. **Tigon** (OSDI ’25), a partitioned database for a multi-host CXL pod, works this way.
 
-The serious idea keeps the _data_ in the vast LNR and small **metadata** about the coherence in the SCR, where hardware coherence makes the metadata itself trustworthy. **Tigon** (OSDI ’25), an early database for a multi-host CXL pod, works this way. Each shared object gets a _coherence record_, think of a version counter plus a lock, and a host checks the record before touching the object; if someone wrote it since the host last looked, the host flushes its stale cache lines and re-reads from CXL. Objects are coarse, rows or key-value pairs of a few KB rather than cache lines, so the metadata stays small, and a shared index in the SCR lets hosts find each object and its record. We call this scheme **hardware-coherent metadata-based sharing**, HCMeta for short. The first figure on the right steps through it.
+Specifically, each shared object gets a _coherence record_, think of a version counter plus a lock, and a host checks the record before touching the object; if someone wrote it since the host’s last access, meaning that the host might hold a stale cache, the host issues manual cache flush operations in software and re-reads from CXL. Objects are coarse, rows or key-value pairs of a few KB rather than cache lines, so the metadata memory footprint stays small compared to data size. A shared index in the SCR lets hosts find each object and its record. We call this scheme **hardware-coherent metadata-based sharing**, **HCMeta** for short. The first figure on the right steps through it.
 
-HCMeta is correct, and for Tigon’s workload of occasional cross-partition transactions it works well. But push more data into sharing and a problem surfaces: _the metadata grows with the number of shared objects, and the SCR does not._ In the Megalon paper’s example with 40-byte keys, HCMeta spends 52 bytes of SCR per object, so a 100 MB SCR caps sharing at about 1.9M objects. A terabyte of small objects holds hundreds of millions.
+HCMeta is correct, and for Tigon’s workload of occasional cross-partition transactions it works well. But push more data into sharing and a problem surfaces: _the metadata grows with the number of shared objects, but the SCR does not._ In the Megalon paper’s example with 40-byte keys, HCMeta spends 52 bytes of SCR per object, so a 100 MB SCR caps sharing at about 1.9M objects. A terabyte of small objects holds hundreds of millions. This is far from enough if the goal is to share a huge amount of data on CXL.
 
-At the cap, HCMeta **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host that wants an unshared object must ask its owner and wait, about 55 µs per round trip in Tigon’s artifact. We call the rotation _churn_. In that artifact, growing the dataset from 2.4M to 24M objects at 20% cross-host transactions cuts throughput by 10×. A cliff, not a slope.
+At the cap, HCMeta **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner, about 55 µs per round trip in Tigon’s artifact. We call the rotation _churn_. In that artifact, growing the dataset from 2.4M to 24M objects at 20% cross-host transactions cuts throughput by 10×. A cliff, not a slope.
 
-**Summary.** The partly coherent model makes shared metadata the key to correct sharing, then makes the only place it can live absurdly small. So our first paper asks: _how can hosts share a huge number of objects when even the metadata is too big for the coherent region?_
+**Summary.** The software coherence approach can let us share data objects in the LNR while keeping the data coherent, but it takes a performance hit when the SCR soon fills up with metadata. So our first paper asks: _how can hosts share a huge number of objects when even the metadata is too big for the coherent region?_
 
 ### HCMeta, step by step
 
@@ -225,25 +203,29 @@ A line chart of throughput versus dataset size. With unlimited SCR, throughput h
 
 Paper one · OSDI 2026 · Best-paper nominee
 
-## 5. Megalon
+## 4. Megalon
 
 Share the data. Split the metadata.
 
 Skipped ahead? The setup in brief
 
-CXL lets hosts share terabytes, but the model we target keeps only a small coherent region (the **SCR**, a few hundred MB) coherent across hosts; the large non-coherent region (the **LNR**) can silently serve stale cached data. The standard fix, **HCMeta**, keeps all metadata for every shared object in the SCR, about 52 bytes each with 40-byte keys, so a 100 MB SCR caps sharing near 1.9M objects and throughput collapses past it. [↑ The partly coherent model](#partly-coherent) · [↑ How HCMeta collapses](#software-coherence)
+CXL lets hosts share terabytes, but reportedly keeps only a small region coherent across hosts (the **SCR**, a few hundred MB); the large non-coherent region (**LNR**) can silently serve stale cached data. A natural fix, **HCMeta**, uses metadata in the SCR to track coherence for data in the LNR through a software approach, but the metadata can grow huge and soon fill up the SCR without even sharing a large number of data objects (~2M). The performance collapses past it. [↑ The partly coherent model](#partly-coherent) · [↑ How HCMeta collapses](#software-coherence)
 
-**Megalon** starts where HCMeta breaks, with one observation: the metadata is two very different things glued together. **The index**, which maps each object’s ID to its location, is _big_ (every object’s key, tens of bytes each) but _cold_: it changes on inserts, deletes, and sharing-state changes, far less often than data is written. **The coherence records** are _tiny_ (a lock bit and a counter, 4 bytes) but _hot_: touched on every write.
+**Megalon** starts where HCMeta breaks, with one observation: the metadata is two very different things glued together. **The index**, which maps each object’s ID to its location, is _big_ (every object’s key, tens of bytes each) but _cold_: it changes on inserts and deletes, far less often than data writes. **The coherence records** are _tiny_ (a lock bit and a counter, 4 bytes) but _hot_: touched on every write.
 
-HCMeta stuffs both into the SCR. Megalon’s key idea is to **split** them and share each the way its nature demands. The hot, tiny records stay _physically_ shared in the SCR, where hardware coherence is exactly the right tool; at 4 bytes, about 13× more of them fit than HCMeta’s 52-byte bundles. The big, cold index is _logically_ shared: every host keeps a full **replica** in its local DRAM, of which it has hundreds of gigabytes, roughly 1000× the SCR. A 100 MB SCR that capped HCMeta near 2 million objects lets Megalon share about 25 million.
+HCMeta stuffs both into the SCR. Megalon’s key idea is to **split** them and share each the way its nature demands. The hot, tiny records stay _physically_ shared in the SCR, where hardware coherence makes coherence checks fast; at 4 bytes, about 13× more of them fit than HCMeta’s 52-byte bundles. The big, cold index is _logically_ shared: every host keeps a full **replica** in its local DRAM, of which it has hundreds of gigabytes, roughly 1000× the SCR. A 100 MB SCR that capped HCMeta near 2 million objects lets Megalon share about 25 million.
 
-At first sight, replicating the index recreates the problem: N replicas must now be kept consistent, the very thing coherence was for. However, the index is the _cold_ half. It changes rarely, so keeping replicas in sync is cheap, given a mechanism to do it.
+At first sight, replicating the index recreates the problem: N replicas must now be kept consistent. However, the index is the _cold_ half. It changes rarely, so keeping replicas in sync is cheap, given a mechanism to do it.
 
-That mechanism is a **shared log in the CXL memory itself**: an ordered sequence of entries in the LNR, with only its head and tail pointers in the SCR. To change the index, a host records the change in the log by claiming the next entry with a compare-and-swap (an atomic instruction) on the coherent tail, writing the entry, and flushing it. Every host checks the tail before any index read, then applies log entries in order to its replica if the replica is outdated. One totally ordered log at memory speed: replicas cannot drift, and no message-based agreement is needed. The idea comes from Node Replication, which synchronized data structures across NUMA sockets the same way.
+That mechanism is a **shared log**: a linearizable, ordered sequence of entries that many parties can _append_ to at the tail and _read_. It is the classic basis for **state machine replication**: replicas that apply the same entries in the same order reach the same state. Megalon keeps the index replicas consistent exactly this way.
+
+Shared logs are usually built on distributed protocols that pass messages, at high cost. Megalon instead follows **Node Replication** (NR), which uses a shared log to build concurrent data structures across NUMA sockets, but places the log in the LNR, where every _host_ reads and appends to it directly, with no message passing.
+
+Only the log’s **head and tail**, on which its correctness depends, live in the SCR beside the coherence records, so they get hardware coherence at almost no SCR cost. To change the index, a host claims the next entry with an atomic compare-and-swap on the tail, writes the entry, and flushes it. Before any index read, a host checks the tail and applies any new entries to its replica.
 
 The log supports two further coherence techniques.
 
-**Dynamic coherence records.** Objects that are only _read_ need no record, since nothing changes under the readers. So Megalon allocates records only for objects that are read and written. Therefore, Megalon can fit an unlimited number of read-only objects, as long as they fit in the LNR. When the SCR fills, Megalon demotes cold objects and reassigns their records, announcing each change through the log. Churn becomes an appended entry rather than a round trip: about 8× cheaper.
+**Dynamic coherence records.** With split metadata sharing, Megalon can share far more objects than HCMeta, but it is still fundamentally limited by the number of coherence records that fit in the SCR. We make another core observation: objects that are only _read_ need no record, since nothing changes under the readers. So Megalon allocates records only for objects that are read and written. Therefore, Megalon can fit an unlimited number of read-only objects, as long as they fit in the LNR. When the SCR fills, Megalon demotes cold objects and reassigns their records, announcing each change through the log. However, churn becomes an appended entry rather than a round trip: about 8× cheaper than HCMeta.
 
 **Dual-path coherence.** With records coming and going, an object can gain or lose its record _while you are reading it_, so the record alone cannot prove your cache is fresh. Hosts therefore also check, at the end of a read, whether the log recorded an allocation event for the object; if so, they flush and retry.
 
@@ -278,7 +260,7 @@ Megalon Figure 6(a) · Talk, slide 51
 - HCMeta
 - Megalon
 
-5% writes, Zipfian, 200 MB SCR, values read off the paper’s Figure 6(a). From 4.8M to 24M shared objects HCMeta churns and collapses while Megalon holds near 17 Mops/s: **10×** at 24M. Even with a 32 MB SCR (not shown) Megalon keeps an **8.4×** lead: smaller records, cheaper churns.
+5% writes, Zipfian, 200 MB SCR. From 4.8M to 24M shared objects HCMeta churns and collapses while Megalon holds near 17 Mops/s: **10×** at 24M, all thanks to more data being shared through split metadata sharing. [Read the paper](https://dassl-uiuc.github.io/pdfs/papers/megalon.pdf) for more experiments.
 
 Show the numbers
 
@@ -294,7 +276,7 @@ Grouped bars of throughput for 4.8, 7.2, 12 and 24 million shared objects under 
 
 <a id="index-problem"></a>
 
-## 6. The index problem
+## 5. The index problem
 
 Sharing objects is not enough. A store also has to find them.
 
@@ -326,7 +308,7 @@ An interactive slider over index node size. At small node sizes, tens of million
 
 Paper two · SOSP 2026
 
-## 7. Prism
+## 6. Prism
 
 The right index was on disk all along.
 
