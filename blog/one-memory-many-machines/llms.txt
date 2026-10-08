@@ -1,4 +1,4 @@
-# One Memory, Many Machines: A field guide to shared CXL memory
+# The Partly Coherent CXL: A field guide to shared CXL memory
 
 > What shared CXL memory is, why hardware coherence covers only a sliver of it, and how to share data on it anyway: a general-audience walk from the memory wall to our lab's Megalon (OSDI '26) and Prism (SOSP '26).
 
