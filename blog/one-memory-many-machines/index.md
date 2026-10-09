@@ -57,8 +57,6 @@ A great new memory technology
 
 The economics come from the pins. A DDR5-6400 channel moves ~51 GB/s over ~200 signal pins. An x16 PCIe 5.0 link moves ~63 GB/s per direction over 64 signal pins, and PCIe 6.0 doubles that. Per pin, the serial link carries roughly 4× the bandwidth, so a CPU can afford far more of them. That is how CXL adds terabytes where the DDR bus cannot.
 
-The price for better scalability is the latency. Local DRAM answers in roughly 110 ns; CXL memory takes two to three times that, about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which software tolerates every day. It is still far closer than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
-
 ### Two ways out of the socket
 
 Sharma et al., CXL survey · PCI-SIG
@@ -66,6 +64,8 @@ Sharma et al., CXL survey · PCI-SIG
 Bandwidth per signal pin is the whole story: close to **1 GB/s per pin** for the PCIe link against about **0.25** for DDR5. The survey we cite quotes 256 GB/s in its introduction; its own bandwidth section gives the per-direction figure used here.
 
 A diagram comparing a DDR channel, about 200 signal pins for about 51 gigabytes per second, against a CXL link over PCIe, 64 signal pins for about 63 gigabytes per second in each direction.
+
+The price for better scalability is the latency. Local DRAM answers in roughly 110 ns; CXL memory takes two to three times that, about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which software tolerates every day. It is still far closer than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
 
 ### Where CXL lands in the hierarchy
 
@@ -124,10 +124,6 @@ Now scale that bookkeeping up to what CXL 3.x allows: several _machines_, dozens
 
 So the hardware is expected to compromise, in what we call the **partly coherent model**, which both of our papers target. The memory splits in two. A **small coherent region**, the _SCR_, is a few hundred MB that hardware keeps coherent across hosts. A **large non-coherent region**, the _LNR_, is the remaining several TB, where the hardware does nothing about coherence across hosts. Each host’s own cache coherence still works; it just never hears from the others.
 
-What goes wrong in the LNR? Exactly what cache coherence exists to prevent, except now nobody prevents it. Host 1 reads object A and caches it. Host 2 overwrites it with A′. On one machine that write would invalidate host 1’s copy; across machines, in the LNR, _no invalidation is ever sent_. Host 1 reads again, its cache says “I have that,” and it returns the stale value. Silently. Your database just served data that is no longer fresh.
-
-One could simply use the SCR to share data, but a few hundred megabytes shared among many hosts is nothing; the whole point was the terabytes. Rejected. Therefore, we need a better approach to share data coherently in CXL.
-
 ### The two regions, side by side
 
 Megalon §2.1 · Tigon, citing AMD
@@ -137,6 +133,10 @@ A few hundred MB on a device of several TB: roughly one part in ten thousand. Th
 A device of several TB with a coherent region of a few hundred MB: **roughly one part in ten thousand**. The marker is widened to be visible at all; at true scale you could not see it, which is the point.
 
 A long bar representing several terabytes of CXL memory. The hardware-coherent region, a few hundred megabytes, would be far thinner than a pixel; it is drawn as a widened marker at the left edge and shown magnified.
+
+What goes wrong in the LNR? Exactly what cache coherence exists to prevent, except now nobody prevents it. Host 1 reads object A and caches it. Host 2 overwrites it with A′. On one machine that write would invalidate host 1’s copy; across machines, in the LNR, _no invalidation is ever sent_. Host 1 reads again, its cache says “I have that,” and it returns the stale value. Silently. Your database just served data that is no longer fresh.
+
+One could simply use the SCR to share data, but a few hundred megabytes shared among many hosts is nothing; the whole point was the terabytes. Rejected. Therefore, we need a better approach to share data coherently in CXL.
 
 ### The stale read, step by step
 
@@ -158,12 +158,6 @@ A better idea keeps the _data_ in the vast LNR and small **metadata** in the SCR
 
 Specifically, each shared object gets a _coherence record_, think of a version counter plus a lock, and a host checks the record before touching the object; if someone wrote it since the host’s last access, meaning that the host might hold a stale cache, the host issues manual cache flush operations in software and re-reads from CXL. Objects are coarse, rows or key-value pairs of a few KB rather than cache lines, so the metadata memory footprint stays small compared to data size. A shared index in the SCR lets hosts find each object and its record. We call this scheme **hardware-coherent metadata-based sharing**, **HCMeta** for short. The first figure on the right steps through it.
 
-HCMeta is correct, and for Tigon’s workload of occasional cross-partition transactions it works well. But push more data into sharing and a problem surfaces: _the metadata grows with the number of shared objects, but the SCR does not._ In the Megalon paper’s example with 40-byte keys, HCMeta spends 52 bytes of SCR per object, so a 100 MB SCR caps sharing at about 1.9M objects. A terabyte of small objects holds hundreds of millions. This is far from enough if the goal is to share a huge amount of data on CXL.
-
-At the cap, HCMeta **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner, about 55 µs per round trip in Tigon’s artifact. We call the rotation _churn_. In that artifact, growing the dataset from 2.4M to 24M objects at 20% cross-host transactions cuts throughput by 10×. A cliff, not a slope.
-
-**Summary.** The software coherence approach can let us share data objects in the LNR while keeping the data coherent, but it takes a performance hit when the SCR soon fills up with metadata. So our first paper asks: _how can hosts share a huge number of objects when even the metadata is too big for the coherent region?_
-
 ### HCMeta, step by step
 
 Megalon §2.2
@@ -175,6 +169,12 @@ Host 1 reads A from the LNR and notes its version from A’s coherence record in
 A version record per object in the SCR, which hardware keeps coherent; a reader that finds a newer version drops its copy and re-reads. Simplified: the lock, the fences, and the mid-read retry are left out.
 
 An animation of HCMeta. Host 1 caches A at version 0; host 2 writes A-prime to the LNR and bumps A's version in the SCR to 1; host 1 checks the SCR, sees 0 does not match 1, invalidates its cached A, and re-reads A-prime from the LNR.
+
+HCMeta is correct, and for Tigon’s workload of occasional cross-partition transactions it works well. But push more data into sharing and a problem surfaces: _the metadata grows with the number of shared objects, but the SCR does not._ In the Megalon paper’s example with 40-byte keys, HCMeta spends 52 bytes of SCR per object, so a 100 MB SCR caps sharing at about 1.9M objects. A terabyte of small objects holds hundreds of millions. This is far from enough if the goal is to share a huge amount of data on CXL.
+
+At the cap, HCMeta **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner, about 55 µs per round trip in Tigon’s artifact. We call the rotation _churn_. In that artifact, growing the dataset from 2.4M to 24M objects at 20% cross-host transactions cuts throughput by 10×. A cliff, not a slope.
+
+**Summary.** The software coherence approach can let us share data objects in the LNR while keeping the data coherent, but it takes a performance hit when the SCR soon fills up with metadata. So our first paper asks: _how can hosts share a huge number of objects when even the metadata is too big for the coherent region?_
 
 ### The collapse, measured
 
@@ -241,8 +241,6 @@ The log supports two further coherence techniques.
 
 **Other uses of the log.** Since every index change is ordered by the log, Megalon can also keep a host’s private objects in its local DRAM, and cache read copies of hot shared objects there, where access is faster than CXL (paper §3.5).
 
-Against HCMeta, Megalon delivers 15× on read-only workloads with large datasets and 10× at 5% writes once metadata outgrows the SCR. The cost is host DRAM for the index replicas, 7.6% more memory in the 24M-object read-only run.
-
 ### A shared log, in the memory itself
 
 Megalon §3.3, §4
@@ -252,6 +250,8 @@ Only the head and tail pointers need hardware coherence. The entries sit in the 
 Hosts claim entries with a compare-and-swap on the tail and replay them into their replicas. Ordering without messages; the only coordination is atomic operations on two pointers in the SCR.
 
 A shared log laid out in the non-coherent region with its head and tail pointers in the coherent region. Hosts append entries and replay them into local index replicas.
+
+Against HCMeta, Megalon delivers 15× on read-only workloads with large datasets and 10× at 5% writes once metadata outgrows the SCR. The cost is host DRAM for the index replicas, 7.6% more memory in the 24M-object read-only run.
 
 ### Megalon flat where HCMeta collapses
 
@@ -288,12 +288,6 @@ The port is then straightforward. We separate the version numbers from the tree 
 
 **Problem 1: version numbers overflow the SCR.** Every node needs a version number in the SCR, and as the tree grows, so does the number of version numbers. With 100M keys, ART has ~40M inner nodes; at 8 bytes per version, a 128 MB SCR holds only about 40% of them. The rest spill into the LNR, and now the metadata we rely on to detect stale data can itself be stale. A host must flush a spilled version number on every access and re-read it, even if nothing has changed. Take the SCR away entirely, so that every version number spills, and SC-ART runs about 20× slower than with a 128 MB SCR. Would fewer but larger nodes be an easy fix?
 
-**Problem 2: bigger nodes cause false invalidations.** Larger nodes, as in B-trees, do solve the capacity problem: more keys per node means fewer nodes and fewer version numbers. With a fan-out of 128, SC-BTree’s version numbers fit in the SCR easily. But now a single version number covers 128 keys. Suppose one host updates key 194. The version number of the whole node changes. Another host now reads key 298 from the same node; since the node’s version has changed, it must flush and re-read the node, even though key 298 has not changed. That is what we call a **false invalidation**. We made the metadata fit but introduced unnecessary cache flushes, and under 50% writes SC-BTree drops to 1.8 Mops/s.
-
-**The core problem** is what we call the **updatable surface area**, defined as the portion of the index that can receive in-place modifications. In ART and B-trees, any node from root to leaf can be modified in place, so the updatable surface area spans the entire index, and every node needs a version number. That leaves a trade-off. Small nodes track changes precisely, but need too many version numbers. Large nodes make the metadata fit, but track changes too coarsely and cause false invalidations. Either way, we pay for excessive cache flushes, so just changing the node size does not solve the underlying problem.
-
-**Summary.** So we come back to our question: what is a good index for partly coherent CXL? An index with a _small updatable surface area_. All in-place updates should be restricted to a small region that can fit in the SCR, and the bulk of the data must be immutable, so that it can live in the LNR. Perhaps surprisingly, a data structure built for disk is a much better fit than the in-memory indexes we just looked at.
-
 ### Problem 1: version numbers overflow the SCR
 
 Prism §3.2, Figure 1
@@ -306,6 +300,8 @@ Every node of SC-ART keeps a version number in the SCR. As the tree grows, the v
 
 An animation of an ART growing from five nodes to thirteen while its version numbers fill eight slots in the coherent region; the five that spill into the non-coherent region are marked as needing a flush on every access.
 
+**Problem 2: bigger nodes cause false invalidations.** Larger nodes, as in B-trees, do solve the capacity problem: more keys per node means fewer nodes and fewer version numbers. With a fan-out of 128, SC-BTree’s version numbers fit in the SCR easily. But now a single version number covers 128 keys. Suppose one host updates key 194. The version number of the whole node changes. Another host now reads key 298 from the same node; since the node’s version has changed, it must flush and re-read the node, even though key 298 has not changed. That is what we call a **false invalidation**. We made the metadata fit but introduced unnecessary cache flushes, and under 50% writes SC-BTree drops to 1.8 Mops/s.
+
 ### Problem 2: one version number for 128 keys
 
 Prism §3.3, Figure 2
@@ -317,6 +313,10 @@ A large node holds 128 keys in the LNR and shares a single version number in the
 Host 1 changes one key; the node’s version number changes; host 2, which wants a different key from the same node, must flush and re-read all 128. One write, 127 unmodified keys flushed: a false invalidation.
 
 An animation of two hosts and a 128-key B-tree node with one version number in the coherent region. Host 2 has the node cached at version 7; host 1 updates key 194 and the version becomes 8; host 2 reads key 298, sees the mismatch, and must flush and re-read the whole node.
+
+**The core problem** is what we call the **updatable surface area**, defined as the portion of the index that can receive in-place modifications. In ART and B-trees, any node from root to leaf can be modified in place, so the updatable surface area spans the entire index, and every node needs a version number. That leaves a trade-off. Small nodes track changes precisely, but need too many version numbers. Large nodes make the metadata fit, but track changes too coarsely and cause false invalidations. Either way, we pay for excessive cache flushes, so just changing the node size does not solve the underlying problem.
+
+**Summary.** So we come back to our question: what is a good index for partly coherent CXL? An index with a _small updatable surface area_. All in-place updates should be restricted to a small region that can fit in the SCR, and the bulk of the data must be immutable, so that it can live in the LNR. Perhaps surprisingly, a data structure built for disk is a much better fit than the in-memory indexes we just looked at.
 
 ### Small nodes overflow the SCR; large nodes cause false invalidations
 
@@ -344,17 +344,17 @@ That data structure is the **log-structured merge tree (LSM)**, the engine insid
 
 The key property of an LSM is that its updatable surface area is confined to the memtable. Our key insight is that this is exactly what partly coherent CXL asks for: LSMs confine in-place updates to a small region, while a large portion of the data structure is immutable. The memtable is small, typically a few megabytes, so it can be placed entirely in the SCR along with the manifest, where hardware maintains coherence with zero software overhead. SSTables are immutable for their whole lifetime, so while an SSTable is alive there is nothing to track, and they can live in the LNR. One thing remains to handle: memory reuse. When compaction discards an SSTable, its memory is recycled for a new one, so each SSTable gets a strictly increasing ID in the manifest, and a host that sees an ID for the first time flushes that SSTable’s region once before reading it. We call this port **SC-LSM**. So the key idea is to confine the updatable surface area to a region that fits in the SCR.
 
+### What a good index for partly coherent CXL looks like
+
+Prism §3.4, §4.1
+
+The index as a triangle, its in-place-updatable part shaded, beside the SCR and the LNR. Switch the design: an ART or B+-tree can be modified anywhere, so the shading covers the whole index and its version numbers overflow the SCR; an LSM confines updates to the memtable at the top, which fits in the SCR, and keeps the bulk immutable in the LNR.
+
+An interactive diagram of an index drawn as a triangle beside the coherent and non-coherent regions. For an ART or B+-tree the whole triangle is updatable and its version numbers overflow the coherent region. For an LSM only the apex, the memtable, is updatable and sits in the coherent region, with immutable SSTables below.
+
 Even this straightforward port performs well. With 100M keys and a 128 MB SCR, SC-LSM beats SC-ART on all three YCSB workloads we tried, runs close to SC-BTree on the read-heavy ones, and beats it by up to 2.2× under 50% writes, because it has no false invalidations and no spilled version numbers. So limiting the updatable surface area helps. But this port inherits an old LSM problem: **compaction cannot keep up**. At high write rates the memtable fills and flushes quickly, producing L0 SSTables faster than compaction can drain them into the next level. Since L0 is not level-sorted, a point query may end up probing every L0 SSTable. We measured it: at 5% writes SC-LSM probes about 15 SSTables per read, and at 50% writes it jumps all the way up to 49. This is a well-known LSM challenge and not something our port introduced.
 
 Being in memory gives us a way out that disk never had. In-place updates to the upper levels of an LSM are a non-starter on disk, because they need random I/O, which is exactly what LSMs exist to avoid. In memory, they are not that expensive. So the idea is to make the upper level of the LSM updatable in place: when a key is written again, we overwrite it instead of spawning a new SSTable. Fewer SSTables means less compaction pressure, a smaller L0, and fewer probes per read. But wait, doesn’t that bring back the updatable-surface-area problem? Yes it does, so we bound it. We call this layer the **bounded updatable layer (BUL)**. It sits above the SSTables and uses an ART as its index, with its data in the LNR and its version numbers in the SCR, and we limit its size so that all of its version numbers, even tracked per node, fit in the SCR. In the paper’s ablation at 5% writes, the BUL alone cuts the SSTables probed per read from 15 to 2.
-
-### What a good index for partly coherent CXL looks like
-
-Prism §3.4, §4.1, §5
-
-The index as a triangle, its in-place-updatable part shaded, beside the SCR and the LNR. Switch the design: an ART or B+-tree can be modified anywhere, so the shading covers the whole index and its version numbers overflow the SCR; an LSM confines updates to the memtable at the top, which fits in the SCR; Prism adds a bounded updatable layer whose version numbers still fit.
-
-An interactive diagram of an index drawn as a triangle beside the coherent and non-coherent regions. For an ART or B+-tree the whole triangle is updatable and its version numbers overflow the coherent region. For an LSM only the apex, the memtable, is updatable and sits in the coherent region, with immutable SSTables below. For Prism a bounded updatable layer sits under the memtable with its version numbers in the coherent region.
 
 ### Prism’s architecture: where each tier lives
 
@@ -389,12 +389,6 @@ We evaluate Prism by emulating shared CXL memory on a four-socket Intel Xeon ser
 
 **Mixed read-write.** At 50% writes, Prism reaches up to 6.2× SC-BTree’s peak throughput and 5.6× SC-ART’s. SC-BTree suffers from false invalidations, while SC-ART suffers from version number overflow. In Prism, repeated writes to hot keys are absorbed in the memtable with hardware coherence, and the rest land in the BUL, where they are tracked at fine granularity. Sweeping the write ratio tells the same story: SC-BTree drops off a cliff as the write ratio increases, but Prism declines much more gently.
 
-**A full KV store under YCSB.** Finally, we built a key-value store on top of each index and ran the YCSB suite on it. The takeaway: the heavier the write pressure, the larger Prism’s advantage, up to 7.4× over SC-BTree on YCSB-A and 9.4× on YCSB-F. Even on the read-only YCSB-C, traditionally an LSM’s weakness, Prism still comes out ahead of both.
-
-Prism’s results
-
-Overall, Prism reaches up to 9.4× the throughput of the ported in-memory indexes and 8.6–15.1× that of Tigon-SWcc, a Tigon-style index whose 100M-key index does not fit in the SCR, so it keeps migrating data in and out of CXL. It also beats Chime-CXL, an RDMA index ported to CXL that pays at least two cache flushes per leaf access, by 3.6–5.7×, and with 128 MB of SCR it matches the throughput SC-ART needs unlimited SCR to reach on YCSB-A. It is not a win everywhere. At 5% writes SC-BTree is faster on range scans, since sorted keys in one large node make a scan cheap; Prism takes the lead from 10% writes. And on read-only workloads Megalon’s index, which sits in each host’s local DRAM, is faster than Prism’s, which sits in CXL; Prism wins once there are writes, by 5.5× on YCSB-A. [Read the paper](https://dassl-uiuc.github.io/pdfs/papers/prism.pdf) for the rest.
-
 ### Throughput against write ratio
 
 Prism Figure 7(c)
@@ -417,6 +411,8 @@ Throughput against write ratio
 - 50% · 2.5 Mops/s · 1.8 Mops/s · 11.6 Mops/s ·
 
 Three lines of throughput against write ratio from 10 to 50 percent. SC-BTree falls from 9.3 to 1.8 million operations per second, SC-ART stays near 3, and Prism declines from 17.4 to 11.6 while staying ahead throughout.
+
+**A full KV store under YCSB.** Finally, we built a key-value store on top of each index and ran the YCSB suite on it. The takeaway: the heavier the write pressure, the larger Prism’s advantage, up to 7.4× over SC-BTree on YCSB-A and 9.4× on YCSB-F. Even on the read-only YCSB-C, traditionally an LSM’s weakness, Prism still comes out ahead of both.
 
 ### A full key-value store under YCSB
 
@@ -441,6 +437,10 @@ A full key-value store under YCSB
 - YCSB-F · 50% RMW · 1.9 Mops/s · 1.5 Mops/s · 14.1 Mops/s ·
 
 Grouped bars across YCSB workloads A to F. Prism reaches 11.8, 18.5, 21.0, 17.7, 9.8 and 14.1 million operations per second; SC-BTree collapses to 1.6 and 1.5 on the two write-heavy workloads and wins only on E; SC-ART stays below 3.5 throughout.
+
+Prism’s results
+
+Overall, Prism reaches up to 9.4× the throughput of the ported in-memory indexes and 8.6–15.1× that of Tigon-SWcc, a Tigon-style index whose 100M-key index does not fit in the SCR, so it keeps migrating data in and out of CXL. It also beats Chime-CXL, an RDMA index ported to CXL that pays at least two cache flushes per leaf access, by 3.6–5.7×, and with 128 MB of SCR it matches the throughput SC-ART needs unlimited SCR to reach on YCSB-A. It is not a win everywhere. At 5% writes SC-BTree is faster on range scans, since sorted keys in one large node make a scan cheap; Prism takes the lead from 10% writes. And on read-only workloads Megalon’s index, which sits in each host’s local DRAM, is faster than Prism’s, which sits in CXL; Prism wins once there are writes, by 5.5× on YCSB-A. [Read the paper](https://dassl-uiuc.github.io/pdfs/papers/prism.pdf) for the rest.
 
 ### Range scans: where SC-BTree wins, and where it stops
 
@@ -721,11 +721,10 @@ Every figure on the page, as data. Rendered from the same constants the page its
 
 ### Updatable surface area, by index
 
-| key | label | mutableFrom | mutableTo | bulTo | verdict | caption |
-| --- | --- | --- | --- | --- | --- | --- |
-| tree | ART or B+-tree | 0 | 1 | 0 | the whole index | Any node from root to leaf can be modified in place, so the updatable surface area spans the entire index. Every node needs a version number, and together they do not fit in the SCR. |
-| lsm | LSM | 0 | 0.28 | 0 | the memtable | In-place updates are confined to the memtable, which fits in the SCR. The SSTables below are immutable for their whole lifetime, so they can live in the LNR with no coherence tracking. |
-| prism | Prism | 0 | 0.28 | 0.54 | the memtable and a bounded layer | The memtable sits in the SCR. Below it a bounded updatable layer absorbs repeated writes in place, sized so that its version numbers fit in the SCR. Everything below that is immutable. |
+| key | label | mutableTo | verdict | caption |
+| --- | --- | --- | --- | --- |
+| tree | ART or B+-tree | 1 | the whole index | Any node from root to leaf can be modified in place, so the updatable surface area spans the entire index. Every node needs a version number, and together they do not fit in the SCR. |
+| lsm | LSM | 0.28 | the memtable | In-place updates are confined to the memtable, which fits in the SCR. The SSTables below are immutable for their whole lifetime, so they can live in the LNR with no coherence tracking. |
 
 ### Prism's three tiers
 
