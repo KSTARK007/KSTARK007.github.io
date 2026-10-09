@@ -8,7 +8,7 @@ authors:
     url: "https://jiyuuuhuuu.github.io/"
 canonical_url: "https://kstark007.github.io/blog/one-memory-many-machines/"
 date_published: "2026-08-25T09:00:00-05:00"
-date_modified: "2026-09-29T09:00:00-05:00"
+date_modified: "2026-10-09T09:00:00-05:00"
 description: "What shared CXL memory is, why hardware coherence covers only a sliver of it, and how to share data on it anyway: a general-audience walk from the memory wall to our lab's Megalon (OSDI '26) and Prism (SOSP '26)."
 based_on_papers: "Megalon: Efficient Data Sharing for Partly Coherent CXL Memory (OSDI 2026); Disk-Based LSMs: An Unexpectedly Good Index for Partly Coherent CXL Memory (SOSP 2026)"
 megalon_authors: "Jiyu Hu, Seokjoo Cho, Landon Johnson, Kiran Hombal, Shreesha G. Bhat, Marcos K. Aguilera, Ramnatthan Alagappan, Aishwarya Ganesan"
@@ -26,6 +26,8 @@ A general-audience explainer by [Kiran Hombal](https://kstark007.github.io/) and
 Canonical HTML version: https://kstark007.github.io/blog/one-memory-many-machines/
 
 ---
+
+<a id="tldr"></a>
 
 ## TL;DR
 
@@ -98,7 +100,7 @@ Now with CXL 3.0 shared memory, databases, key-value stores, and file systems co
 
 If it sounds too good to be true, it is, due to a catch of CXL 3.0 that prevents data from being shared correctly.
 
-#### Three generations, three relationships to memory
+### Three generations, three relationships to memory
 
 CXL Consortium spec releases
 
@@ -138,8 +140,6 @@ A long bar representing several terabytes of CXL memory. The hardware-coherent r
 
 ### The stale read, step by step
 
-Talk, slide 31
-
 1 / 4 · Host 1 reads A from the LNR
 
 The value drops into host 1’s CPU cache, as every read does.
@@ -166,7 +166,7 @@ At the cap, HCMeta **unshares** an old object to make room for a new one. Object
 
 ### HCMeta, step by step
 
-Megalon slide 7 · §2.2
+Megalon §2.2
 
 1 / 4 · Host 1 reads A
 
@@ -217,6 +217,16 @@ HCMeta stuffs both into the SCR. Megalon’s key idea is to **split** them and s
 
 At first sight, replicating the index recreates the problem: N replicas must now be kept consistent. However, the index is the _cold_ half. It changes rarely, so keeping replicas in sync is cheap, given a mechanism to do it.
 
+### Split sharing: each half where it belongs
+
+Megalon §3.2, Figure 2
+
+The index moved to where memory is plentiful; only what must be coherent stays where coherence lives.
+
+The big, cold index is replicated into each host’s DRAM; only the tiny, hot records occupy the SCR. For the paper’s 40-byte-key example, **52 bytes** of SCR per object becomes **4**.
+
+A diagram of Megalon's split: index replicas in each host's local DRAM point to data objects in the LNR and to small coherence records in the SCR. Occupancy bars compare 52 bytes per object for HCMeta against 4 for Megalon.
+
 That mechanism is a **shared log**: a linearizable, ordered sequence of entries that many parties can _append_ to at the tail and _read_. It is the classic basis for **state machine replication**: replicas that apply the same entries in the same order reach the same state. Megalon keeps the index replicas consistent exactly this way.
 
 Shared logs are usually built on distributed protocols that pass messages, at high cost. Megalon instead follows **Node Replication** (NR), which uses a shared log to build concurrent data structures across NUMA sockets, but places the log in the LNR, where every _host_ reads and appends to it directly, with no message passing.
@@ -233,16 +243,6 @@ The log supports two further coherence techniques.
 
 Against HCMeta, Megalon delivers 15× on read-only workloads with large datasets and 10× at 5% writes once metadata outgrows the SCR. The cost is host DRAM for the index replicas, 7.6% more memory in the 24M-object read-only run.
 
-### Split sharing: each half where it belongs
-
-Megalon §3.2, Figure 2
-
-The index moved to where memory is plentiful; only what must be coherent stays where coherence lives.
-
-The big, cold index is replicated into each host’s DRAM; only the tiny, hot records occupy the SCR. For the paper’s 40-byte-key example, **52 bytes** of SCR per object becomes **4**.
-
-A diagram of Megalon's split: index replicas in each host's local DRAM point to data objects in the LNR and to small coherence records in the SCR. Occupancy bars compare 52 bytes per object for HCMeta against 4 for Megalon.
-
 ### A shared log, in the memory itself
 
 Megalon §3.3, §4
@@ -255,7 +255,7 @@ A shared log laid out in the non-coherent region with its head and tail pointers
 
 ### Megalon flat where HCMeta collapses
 
-Megalon Figure 6(a) · Talk, slide 51
+Megalon Figure 6(a)
 
 - HCMeta
 - Megalon
@@ -347,7 +347,7 @@ Prism's architecture: a memtable inside the coherent region, a bounded updatable
 
 ### A key-value store under YCSB
 
-Prism Figure 9 · Talk, slide 90
+Prism Figure 9
 
 - SC-ART
 - SC-BTree
@@ -369,7 +369,7 @@ Grouped bars across YCSB workloads A, B, C and F. Prism reaches 11.8, 18.5, 21.0
 
 ### The honest chart: range scans
 
-Prism Figure 8 · Talk, slide 110
+Prism Figure 8
 
 A real trade-off, with both throughputs read off the paper’s Figure 8. At 5% writes SC-BTree wins range scans, because sorted neighbors in one node are a genuine advantage. The lead flips to Prism at **10% writes** and reaches **6.0×** at 50%.
 
@@ -386,86 +386,6 @@ The honest chart: range scans
 - 50% · 1.6 Mops/s · 9.5 Mops/s · 6.0× · Prism ·
 
 A line of Prism's range-scan throughput relative to SC-BTree as write ratio grows: about 0.7 times at five percent writes, crossing 1.0 at ten percent, reaching six times at fifty percent.
-
-<a id="timeline"></a>
-
-## How we got here
-
-Selected milestones: CXL data systems are the third act of a decade-long story.
-
-### Act one · Tiering and pooling (2017–2023)
-
-Memory could be slower but bigger; the game was deciding which pages live where, one host at a time. Pond added pooling: segments of one device handed to different hosts.
-
-Thermostat, ASPLOS ’17
-
-First fully application-transparent page management for two-tier main memory.
-
-HeMem, SOSP ’21
-
-Tiered memory management built to scale for big-data applications.
-
-TMO, ASPLOS ’22
-
-Transparent memory offloading, in production across Meta's fleet.
-
-Pond, ASPLOS ’23
-
-CXL memory pooling for Azure, within tight latency targets.
-
-TPP, ASPLOS ’23
-
-CXL page placement for the Linux kernel.
-
-### Act two · First sharing (2025)
-
-Tigon faces the partly coherent model first. Its HCMeta-style design is the baseline our work stands on.
-
-Tigon, OSDI ’25
-
-An early database for a multi-host CXL pod, and the first system built around the partly coherent model.
-
-### Act three · General sharing (2026 →)
-
-Megalon makes many objects shareable despite the tiny SCR; Prism gives partly coherent memory a range index. The rest of the stack is next.
-
-Megalon, OSDI ’26
-
-General data sharing beyond the coherent region's capacity.
-
-our lab
-
-Prism, SOSP ’26
-
-A range index built for partly coherent memory.
-
-our lab
-
-<a id="takeaways"></a>
-
-## Takeaways
-
-Five things worth keeping if you keep nothing else.
-
-1
-
-CXL exists because of pins. Core counts outran the 200-pin DDR channel. CXL adds terabytes over a 64-pin PCIe link at roughly the latency of a NUMA hop, a new rung in the memory hierarchy.
-
-2
-
-Shared addresses are not shared coherence. In the model the hardware is heading for, a few hundred MB stay coherent across hosts; the terabytes beyond can silently serve stale caches. Sharing memory is solved. Sharing data is not.
-
-3
-
-The coherent region is a scarce metadata budget. Every correct sharing scheme keeps per-object metadata there, and naive schemes churn and collapse when it fills. Megalon splits the metadata: replicate the big cold index in host DRAM, keep only 4-byte hot records coherent, and order everything through a shared log in CXL, for up to 10× under writes and 15× on reads.
-
-4
-
-Updatable surface area decides which structures survive. If most of a structure can be modified in place, partly coherent memory punishes it: version overflow on one side, false invalidations on the other.
-
-5
-
-Old designs, new medium. Disk-born LSMs, with a tiny mutable buffer and an immutable everything else, fit partly coherent CXL better than the in-memory indexes we ported: up to 9.4× over them and 15.1× over a Tigon-style index.
 
 <a id="sources"></a>
 
@@ -756,29 +676,6 @@ Every figure on the page, as data. Rendered from the same constants the page its
 | 30 | 2.7 | 10.5 |
 | 40 | 2 | 10.2 |
 | 50 | 1.58 | 9.5 |
-
-### The field timeline
-
-| year | name | venue | act | ours | line |
-| --- | --- | --- | --- | --- | --- |
-| 2017 | Thermostat | ASPLOS | 1 | false | First fully application-transparent page management for two-tier main memory. |
-| 2021 | HeMem | SOSP | 1 | false | Tiered memory management built to scale for big-data applications. |
-| 2022 | TMO | ASPLOS | 1 | false | Transparent memory offloading, in production across Meta's fleet. |
-| 2023 | Pond | ASPLOS | 1 | false | CXL memory pooling for Azure, within tight latency targets. |
-| 2023 | TPP | ASPLOS | 1 | false | CXL page placement for the Linux kernel. |
-| 2025 | Tigon | OSDI | 2 | false | An early database for a multi-host CXL pod, and the first system built around the partly coherent model. |
-| 2026 | Megalon | OSDI | 3 | true | General data sharing beyond the coherent region's capacity. |
-| 2026 | Prism | SOSP | 3 | true | A range index built for partly coherent memory. |
-
-### Takeaways
-
-| n | text |
-| --- | --- |
-| 1 | CXL exists because of pins. Core counts outran the 200-pin DDR channel. CXL adds terabytes over a 64-pin PCIe link at roughly the latency of a NUMA hop, a new rung in the memory hierarchy. |
-| 2 | Shared addresses are not shared coherence. In the model the hardware is heading for, a few hundred MB stay coherent across hosts; the terabytes beyond can silently serve stale caches. Sharing memory is solved. Sharing data is not. |
-| 3 | The coherent region is a scarce metadata budget. Every correct sharing scheme keeps per-object metadata there, and naive schemes churn and collapse when it fills. Megalon splits the metadata: replicate the big cold index in host DRAM, keep only 4-byte hot records coherent, and order everything through a shared log in CXL, for up to 10× under writes and 15× on reads. |
-| 4 | Updatable surface area decides which structures survive. If most of a structure can be modified in place, partly coherent memory punishes it: version overflow on one side, false invalidations on the other. |
-| 5 | Old designs, new medium. Disk-born LSMs, with a tiny mutable buffer and an immutable everything else, fit partly coherent CXL better than the in-memory indexes we ported: up to 9.4× over them and 15.1× over a Tigon-style index. |
 
 ## Citing this post
 
