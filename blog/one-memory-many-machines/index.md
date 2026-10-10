@@ -302,7 +302,7 @@ Every node of SC-ART keeps a version number in the SCR. As the tree grows, the v
 
 An animation of an ART growing from five nodes to thirteen while its version numbers fill eight slots in the coherent region; the five that spill into the non-coherent region are marked as needing a flush on every access.
 
-**Problem 2: bigger nodes cause false invalidations.** Larger nodes, as in B-trees, do solve the capacity problem: more keys per node means fewer nodes and fewer version numbers. With a fan-out of 128, SC-BTree’s version numbers fit in the SCR easily. But now a single version number covers 128 keys, causing significant **false invalidations**, as the Problem 2 animation on the right shows. We made the metadata fit but introduced unnecessary cache flushes, and under 50% writes SC-BTree drops to 1.8 Mops/s.
+**Problem 2: bigger nodes cause false invalidations.** Larger nodes, as in B-trees, do solve the capacity problem: more keys per node means fewer nodes and fewer version numbers. With a fan-out of 128, SC-BTree’s version numbers fit in the SCR easily. But now a single version number covers 128 keys, causing significant **false invalidations**, as the Problem 2 animation on the right shows. We made the metadata fit but introduced unnecessary cache flushes.
 
 ### Problem 2: false invalidation
 
@@ -317,8 +317,6 @@ Host 1 changes one key; the node’s version number changes; host 2, which wants
 An animation of two hosts and a 128-key B-tree node with one version number in the coherent region. Host 2 has the node cached at version 7; host 1 updates key 194 and the version becomes 8; host 2 reads key 298, sees the mismatch, and must flush and re-read the whole node.
 
 **The core problem** is what we call the **updatable surface area**, defined as the portion of the index that can receive in-place modifications. In ART and B-trees, any node from root to leaf can be modified in place, so the updatable surface area spans the entire index, and every node needs a version number. That leaves a trade-off. Small nodes track changes precisely, but need too many version numbers. Large nodes make the metadata fit, but track changes too coarsely and cause false invalidations. Either way, we pay for excessive cache flushes, so just changing the node size does not solve the underlying problem.
-
-**Summary.** So we come back to our question: what is a good index for partly coherent CXL? An index with a _small updatable surface area_. All in-place updates should be restricted to a small region that can fit in the SCR, and the bulk of the data must be immutable, so that it can live in the LNR. Perhaps surprisingly, a data structure built for disk is a much better fit than the in-memory indexes we just looked at.
 
 ### Small nodes overflow the SCR; large nodes cause false invalidations
 
@@ -342,9 +340,21 @@ Paper two · SOSP 2026
 
 A data structure built for disk is an unexpectedly good fit for partly coherent CXL.
 
-That data structure is the **log-structured merge tree (LSM)**, the engine inside RocksDB, LevelDB, Bigtable, and Cassandra. A conventional LSM has a small in-memory structure called the **memtable**. All writes go there, and they are updated in place. The bulk of the data sits on disk in sorted, immutable files called **SSTables**, organized in levels, and a small **manifest** records which SSTables are in which level. When the memtable is full, it is flushed down as a new SSTable at level 0 (L0). In the background, _compaction_ merge-sorts SSTables into the next level and discards the old ones. L0 can hold overlapping keys, because each L0 SSTable comes from a separately flushed memtable, but from L1 onward each level is sorted, so only one SSTable per level can hold a given key. A read checks the memtable first, then every SSTable in L0, then at most one SSTable per level until it finds the key.
+That data structure is the **log-structured merge tree (LSM)**, the engine inside RocksDB, LevelDB, Bigtable, and Cassandra. It keeps writes in a small, updatable **memtable** and the bulk of the data in sorted, immutable files called **SSTables**.
 
-The key property of an LSM is that its updatable surface area is confined to the memtable. Our key insight is that this is exactly what partly coherent CXL asks for: LSMs confine in-place updates to a small region, while a large portion of the data structure is immutable. The memtable is small, typically a few megabytes, so it can be placed entirely in the SCR along with the manifest, where hardware maintains coherence with zero software overhead. SSTables are immutable for their whole lifetime, so while an SSTable is alive there is nothing to track, and they can live in the LNR. One thing remains to handle: memory reuse. When compaction discards an SSTable, its memory is recycled for a new one, so each SSTable gets a strictly increasing ID in the manifest, and a host that sees an ID for the first time flushes that SSTable’s region once before reading it. We call this port **SC-LSM**. So the key idea is to confine the updatable surface area to a region that fits in the SCR.
+An LSM confines its updatable surface area to the memtable, exactly what partly coherent CXL asks for. We place the memtable and the **manifest**, which records the live SSTables, in the SCR under hardware coherence. The immutable SSTables live in the LNR. We call this port **SC-LSM**.
+
+Background · LSM trees · expand if new to LSMs
+
+A conventional LSM sends all writes to an in-memory memtable, where they are updated in place. SSTables sit on disk in levels, and a small manifest records which SSTables are in which level.
+
+When the memtable is full, it is flushed as a new SSTable at level 0 (L0). In the background, _compaction_ merge-sorts SSTables into the next level and discards the old ones. L0 SSTables can overlap in key range because each comes from a separate flush. From L1 onward, SSTables within a level have non-overlapping key ranges.
+
+A read checks the memtable first, then L0 SSTables from newest to oldest, then at most one SSTable per level, stopping at the first hit.
+
+Memory reuse · reading a new SSTable
+
+One thing remains to handle: memory reuse. When compaction discards an SSTable, its memory is recycled for a new one. Each SSTable gets a strictly increasing ID in the manifest, and a host that sees an ID for the first time flushes that SSTable’s region once before reading it.
 
 ### What a good index for partly coherent CXL looks like
 
@@ -354,9 +364,9 @@ The index as a triangle, its in-place-updatable part shaded, beside the SCR and 
 
 An interactive diagram of an index drawn as a triangle beside the coherent and non-coherent regions. For an ART or B+-tree the whole triangle is updatable and its version numbers overflow the coherent region. For an LSM only the apex, the memtable, is updatable and sits in the coherent region, with immutable SSTables below.
 
-Even this straightforward port performs well. With 100M keys and a 128 MB SCR, SC-LSM beats SC-ART on all three YCSB workloads we tried, runs close to SC-BTree on the read-heavy ones, and beats it by up to 2.2× under 50% writes, because it has no false invalidations and no spilled version numbers. So limiting the updatable surface area helps. But this port inherits an old LSM problem: **compaction cannot keep up**. At high write rates the memtable fills and flushes quickly, producing L0 SSTables faster than compaction can drain them into the next level. Since L0 is not level-sorted, a point query may end up probing every L0 SSTable. We measured it: at 5% writes SC-LSM probes about 15 SSTables per read, and at 50% writes it jumps all the way up to 49. This is a well-known LSM challenge and not something our port introduced.
+Even this straightforward port of LSM to SC-LSM performs well. So limiting the updatable surface area helps. But this port inherits an old LSM problem: **compaction cannot keep up**. At high write rates the memtable fills and flushes quickly, producing L0 SSTables faster than compaction can drain them into the next level. Since L0 is not level-sorted, a point query may end up probing every L0 SSTable. We measured it: at 5% writes SC-LSM probes about 15 SSTables per read, and at 50% writes it jumps all the way up to 49. This is a well-known LSM challenge and not something our port introduced.
 
-Being in memory gives us a way out that disk never had. In-place updates to the upper levels of an LSM are a non-starter on disk, because they need random I/O, which is exactly what LSMs exist to avoid. In memory, they are not that expensive. So the idea is to make the upper level of the LSM updatable in place: when a key is written again, we overwrite it instead of spawning a new SSTable. Fewer SSTables means less compaction pressure, a smaller L0, and fewer probes per read. But wait, doesn’t that bring back the updatable-surface-area problem? Yes it does, so we bound it. We call this layer the **bounded updatable layer (BUL)**. It sits above the SSTables and uses an ART as its index, with its data in the LNR and its version numbers in the SCR, and we limit its size so that all of its version numbers, even tracked per node, fit in the SCR. In the paper’s ablation at 5% writes, the BUL alone cuts the SSTables probed per read from 15 to 2.
+Being in memory gives us a way out that disk never had. In-place updates to the upper levels of an LSM are a non-starter on disk, because they need random I/O, which is exactly what LSMs exist to avoid. In memory, they are not that expensive. So the idea is to make the upper level of the LSM updatable in place: when a key is written again, we overwrite it instead of spawning a new SSTable. Fewer SSTables means less compaction pressure, a smaller L0, and fewer probes per read. But wait, doesn’t that bring back the updatable-surface-area problem? Yes it does, so we bound it. We call this layer the **bounded updatable layer (BUL)**. It sits above the SSTables and uses an ART as its index, with its data in the LNR and its version numbers in the SCR, and we limit its size so that all of its version numbers, even tracked per node, fit in the SCR.
 
 ### Prism’s architecture: where each tier lives
 
@@ -367,10 +377,6 @@ The memtable and the manifest sit in the SCR under hardware coherence. The BUL k
 Prism's architecture: a memtable and a manifest inside the coherent region, a bounded updatable layer with data in the non-coherent region and version numbers in the coherent region, and immutable SSTable levels below.
 
 Putting everything together, we get **Prism**. The memtable (64 MB) and the manifest (2 MB) live in the SCR. The BUL’s index and data live in the LNR, and the remaining 62 MB of the SCR holds the BUL’s version numbers, one per node; that budget is what bounds the BUL’s size. Below the BUL sit the SSTables, all in the LNR. The memtable and the BUL together form the updatable surface area. Everything else is immutable.
-
-The SCR is very limited, so Prism makes the memtable aware of it and changes the memtable from a write buffer into a **cache for frequently written keys**. A write first checks the memtable. On a hit, the key is updated in place. On a miss, the write goes to the BUL: if the key is absent there, it is added; if it is already present, this is a repeated write, so the key is promoted into the memtable and removed from the BUL. Periodically, and when the BUL is close to full, it flushes cold entries into new SSTables and removes them. So in Prism the most frequently written keys sit in the memtable under hardware coherence, less frequently written keys sit in the BUL with fine-grained software coherence, and the least frequently written keys end up in immutable SSTables. Keys written only once, the one-hit wonders, never take up SCR space.
-
-A read checks the tiers in the same order: memtable, then BUL, then the SSTables, every one in L0 from newest to oldest and at most one per level from L1 on, stopping at the first hit.
 
 ### The three tiers and what each one holds
 
@@ -387,9 +393,25 @@ A 2 MB manifest in the SCR lists the live SSTables: 64 + 62 + 2 = 128 MB.
 
 A table of Prism's three tiers. The memtable in the SCR holds the most frequently written keys under hardware coherence. The BUL holds less frequently written keys, with data in the LNR and version numbers in the SCR, checked per node. The SSTables in the LNR hold the least frequently written keys, immutable, with rising IDs and one flush on first sight.
 
-We evaluate Prism by emulating shared CXL memory on a four-socket Intel Xeon server: one socket acts as the CXL device, with its uncore frequency throttled to mimic CXL latency, and the other three act as hosts. We cap the SCR at 128 MB and load 100M key-value pairs with 24-byte keys and 100-byte values, accessed with a Zipfian distribution. The paper has many more experiments (read-only and range workloads, ablations, SCR size sensitivity, real-world traces, comparisons with an RDMA index and with existing CXL systems). We cover two here.
+The SCR is very limited, so Prism makes the memtable aware of it and changes the memtable from a write buffer into a **cache for frequently written keys**. A write first checks the memtable. On a hit, the key is updated in place. On a miss, the write goes to the BUL: if the key is absent there, it is added; if it is already present, this is a repeated write, so the key is promoted into the memtable and removed from the BUL. Periodically, and when the BUL is close to full, it flushes cold entries into new SSTables and removes them. So in Prism the most frequently written keys sit in the memtable under hardware coherence, less frequently written keys sit in the BUL with fine-grained software coherence, and the least frequently written keys end up in immutable SSTables. Keys written only once, the one-hit wonders, never take up SCR space.
 
-**Mixed read-write.** At 50% writes, Prism reaches up to 6.2× SC-BTree’s peak throughput and 5.6× SC-ART’s. SC-BTree suffers from false invalidations, while SC-ART suffers from version number overflow. In Prism, repeated writes to hot keys are absorbed in the memtable with hardware coherence, and the rest land in the BUL, where they are tracked at fine granularity. Sweeping the write ratio tells the same story: SC-BTree drops off a cliff as the write ratio increases, but Prism declines much more gently.
+A read checks the tiers in the same order: memtable, then BUL, then the SSTables, every one in L0 from newest to oldest and at most one per level from L1 on, stopping at the first hit.
+
+### How Prism places writes across its three tiers
+
+Prism §5.3, §5.6
+
+Write A = 1
+
+Step 1 / 4 · First write: enter the BUL
+
+Start with an empty memtable and key B already in the BUL after one write. Writing A = 1 misses both the memtable and the BUL, so A is inserted into the BUL. Neither key takes up memtable space.
+
+Repeated writes promote a key from the BUL to the memtable. Cold entries flush from the BUL to immutable SSTables; one-hit wonders never enter the memtable.
+
+A walkthrough of Prism’s write path: a first write misses the memtable and is inserted into the BUL; a repeated write promotes that key to the memtable and removes it from the BUL; a memtable hit updates in place; cold BUL entries flush into immutable SSTables.
+
+**Mixed read-write.** At 50% writes, Prism reaches up to 6.2× SC-BTree’s peak throughput and 5.6× SC-ART’s. SC-BTree suffers from false invalidations, while SC-ART suffers from version number overflow. Sweeping the write ratio tells the same story: SC-BTree drops off a cliff as the write ratio increases, but Prism declines much more gently.
 
 ### Throughput against write ratio
 
@@ -443,26 +465,6 @@ Grouped bars across YCSB workloads A to F. Prism reaches 11.8, 18.5, 21.0, 17.7,
 Prism’s results
 
 Overall, Prism reaches up to 9.4× the throughput of the ported in-memory indexes and 8.6–15.1× that of Tigon-SWcc, a Tigon-style index whose 100M-key index does not fit in the SCR, so it keeps migrating data in and out of CXL. It also beats Chime-CXL, an RDMA index ported to CXL that pays at least two cache flushes per leaf access, by 3.6–5.7×, and with 128 MB of SCR it matches the throughput SC-ART needs unlimited SCR to reach on YCSB-A. It is not a win everywhere. At 5% writes SC-BTree is faster on range scans, since sorted keys in one large node make a scan cheap; Prism takes the lead from 10% writes. And on read-only workloads Megalon’s index, which sits in each host’s local DRAM, is faster than Prism’s, which sits in CXL; Prism wins once there are writes, by 5.5× on YCSB-A. [Read the paper](https://dassl-uiuc.github.io/pdfs/papers/prism.pdf) for the rest.
-
-### Range scans: where SC-BTree wins, and where it stops
-
-Prism Figure 8
-
-Both throughputs read off the paper’s Figure 8. At 5% writes SC-BTree wins range scans, because sorted neighbors in one node make a scan cheap. The lead flips to Prism at **10% writes** and reaches **6.0×** at 50%.
-
-Show the numbers
-
-Range scans: where SC-BTree wins, and where it stops
-
-- Write ratio · SC-BTree · Prism · Prism ÷ SC-BTree · Winner ·
-- 5% · 13.8 Mops/s · 9.8 Mops/s · 0.7× · SC-BTree ·
-- 10% · 9.0 Mops/s · 10.1 Mops/s · 1.1× · Prism ·
-- 20% · 4.0 Mops/s · 10.9 Mops/s · 2.7× · Prism ·
-- 30% · 2.7 Mops/s · 10.5 Mops/s · 3.9× · Prism ·
-- 40% · 2.0 Mops/s · 10.2 Mops/s · 5.1× · Prism ·
-- 50% · 1.6 Mops/s · 9.5 Mops/s · 6.0× · Prism ·
-
-A line of Prism's range-scan throughput relative to SC-BTree as write ratio grows: about 0.7 times at five percent writes, crossing 1.0 at ten percent, reaching six times at fifty percent.
 
 <a id="sources"></a>
 
@@ -772,16 +774,14 @@ Every figure on the page, as data. Rendered from the same constants the page its
 | YCSB-E · short scans | 2.9 | 13.7 | 9.8 |
 | YCSB-F · 50% RMW | 1.9 | 1.5 | 14.1 |
 
-### Range-scan crossover (Prism ÷ SC-BTree)
+### Prism writes, step by step
 
-| writeRatio | scBtree | prism |
+| operation | caption | detail |
 | --- | --- | --- |
-| 5 | 13.8 | 9.8 |
-| 10 | 9 | 10.1 |
-| 20 | 4 | 10.9 |
-| 30 | 2.7 | 10.5 |
-| 40 | 2 | 10.2 |
-| 50 | 1.58 | 9.5 |
+| Write A = 1 | First write: enter the BUL | Start with an empty memtable and key B already in the BUL after one write. Writing A = 1 misses both the memtable and the BUL, so A is inserted into the BUL. Neither key takes up memtable space. |
+| Write A = 2 | Repeated write: promote A | Writing A = 2 misses the memtable but finds A in the BUL. This repeated write promotes A into the memtable with its new value and removes A from the BUL. B stays in the BUL. |
+| Write A = 3 | Memtable hit: update in place | The next write to A finds it in the memtable. A is updated in place, from 2 to 3, using hardware coherence in the SCR. The BUL and SSTables are unchanged. |
+| Periodic or near-full BUL flush | Cold entry: flush B to an SSTable | Periodically, or when the BUL is nearly full, cold entries are flushed into new immutable SSTables and removed from the BUL. B was written only once, so it goes to a new L0 SSTable without ever occupying memtable space in the SCR. A remains in the memtable. |
 
 ### Throughput against write ratio (Prism Fig. 7c, Mops/s)
 
