@@ -37,14 +37,6 @@ CXL 3.0 enables multiple TBs of memory to be shared between multiple hosts, open
 
 **Prism** explores how to build a shared index on top of partly coherent CXL in a principled manner. It makes a core observation that the LSM, a data structure originally optimized for disk accesses, is an unexpectedly great fit for CXL indexes. The solution lies in the LSM’s small **updatable surface area**.
 
-- **Papers**: 2
-
-OSDI '26 · SOSP '26
-
-- **Best-paper nominee**: 1
-
-Megalon at OSDI '26
-
 <a id="enter-cxl"></a>
 
 ## 1. Intro to CXL
@@ -63,7 +55,7 @@ Bandwidth per signal pin is important: close to **1 GB/s per pin** for the PCIe 
 
 A diagram comparing a DDR channel, about 200 signal pins for about 51 gigabytes per second, against a CXL link over PCIe, 64 signal pins for about 63 gigabytes per second in each direction.
 
-But the scalability comes at a cost and that is higher latency. Local DRAM latency is roughly 100 ns, compared to CXL memory latency which is two to three times that which is about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which is an acceptable norm for multi-socket servers. It is still much faster than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
+But the scalability comes at a cost and that is higher latency. Local DRAM latency is roughly 100 ns, compared to CXL memory latency which is two to three times that. It is about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which is an acceptable norm for multi-socket servers. It is still much faster than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
 
 ### Where CXL lands in the hierarchy
 
