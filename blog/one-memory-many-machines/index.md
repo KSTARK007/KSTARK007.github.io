@@ -59,7 +59,7 @@ To solve this problem, **Compute Express Link (CXL)** was created. It is an open
 
 Sharma et al., CXL survey · PCI-SIG
 
-Bandwidth per signal pin is important. close to **1 GB/s per pin** for the PCIe link against about **0.25** for DDR5, roughly 4× more, and PCIe 6.0 doubles it again. A CPU can afford far more of these narrow links than DDR channels, which is how CXL adds terabytes where the DDR bus cannot.
+Bandwidth per signal pin is important: close to **1 GB/s per pin** for the PCIe link against about **0.25** for DDR5, roughly 4× more, and PCIe 6.0 doubles it again. A CPU can afford far more of these narrow links than DDR channels, which is how CXL adds terabytes where the DDR bus cannot.
 
 A diagram comparing a DDR channel, about 200 signal pins for about 51 gigabytes per second, against a CXL link over PCIe, 64 signal pins for about 63 gigabytes per second in each direction.
 
@@ -92,7 +92,7 @@ From memory expansion (CXL 1.0) to memory sharing (CXL 3.0+)
 
 CXL 1.1 (2019) does _expansion_ where a single host gets more memory capacity. CXL 2.0 (2020) adds _memory pooling_, here it is a rack-level pool, broken down into segments where each segment is still owned by one host at a time. CXL 3.0 (2022) and its successors (3.2 in 2024, 4.0 in late 2025) add **multi-host shared memory**. Several hosts can map the _same_ region into their address spaces and share data efficiently over a unified piece of memory.
 
-Now with CXL 3.0 shared memory, applications like databases, key-value stores, and file systems could keep one copy of their data in CXL, which every host can reach. Accessing this shared data is now a direct memory operation instead of a round trips over the network.
+Now with CXL 3.0 shared memory, applications like databases, key-value stores, and file systems could keep one copy of their data in CXL, which every host can reach. Accessing this shared data is now a direct memory operation instead of a round trip over the network.
 
 But there is a catch...
 
@@ -112,13 +112,13 @@ CXL 3.0 lacks full cross-host cache coherence
 
 Background · Cache coherence · expand if new to CPU caches
 
-Most memory loads/stores never reach DRAM. A memory access costs about 100 ns, so every CPU keeps recently used data in small, fast and local **caches** and serves most loads/stores from there. But because these Caches are local, it creates copies, and copies can go stale: if one CPU changes a value that another has cached, the other’s copy is now wrong.
+Most memory loads/stores never reach DRAM. A memory access costs about 100 ns, so every CPU keeps recently used data in small, fast and local **caches** and serves most loads/stores from there. But because these caches are local, it creates copies, and copies can go stale: if one CPU changes a value that another has cached, the other’s copy is now wrong.
 
 Inside a single machine this is not visible to the applications, because the hardware does the heavy lifting. **Cache coherence** keeps every cached copy of a location consistent: before a CPU writes, the hardware finds the other copies and invalidates them, so every CPU always sees one coherent view of memory. Software gets that for free.
 
 Imagine scaling the hardware cache coherence support to what CXL 3.0 needs: several _machines_ with dozens of caches each, sharing _terabytes_ of memory. To behave like memory on a single machine, the hardware would have to run coherence across all the hosts, over PCIe, for every cache line. Vendors like AMD, Micron, and Samsung all say that scaling stops somewhere around a few hundred megabytes.
 
-So the hardware is expected to have **partly coherent model**, which is the assumption both of our papers use. The memory is split into two regions. A **small coherent region** or _SCR_, is the part that hardware keeps coherent across hosts. A **large non-coherent region** or _LNR_, is the rest of the memory, where there is no expectation of coherence across hosts.
+So the hardware is expected to have a **partly coherent model**, which is the assumption both of our papers use. The memory is split into two regions. A **small coherent region** or _SCR_, is the part that hardware keeps coherent across hosts. A **large non-coherent region** or _LNR_, is the rest of the memory, where there is no expectation of coherence across hosts.
 
 ### The two regions, side by side
 
@@ -128,7 +128,7 @@ A few hundred MB on a device of several TB.
 
 A long bar representing several terabytes of CXL memory. The hardware-coherent region, a few hundred megabytes, would be far thinner than a pixel; it is drawn as a widened marker at the left edge and shown magnified.
 
-Why do we need cross host cache coherence? What happens if the data stored in LNR is accessed by multiple hosts? let us look at it with an example.
+Why do we need cross host cache coherence? What happens if the data stored in LNR is accessed by multiple hosts? Let us look at it with an example.
 
 Suppose Host 1 reads object A and caches it. Host 2 overwrites it with A′. On Host 2's machine that write would invalidate all its other copies. But across other machines, in the LNR, _no invalidation is ever sent_. So when Host 1 reads the same object again, its cache returns the stale value silently. This is a correctness bug and is very serious.
 
@@ -148,9 +148,9 @@ An animation of two hosts sharing a value in the non-coherent region. Host 1 cac
 
 ## 3. A software approach, and how it collapses
 
-One way to achive **software coherence** is to keep the _data_ in LNR and small **metadata** in the SCR to track the coherence, where hardware coherence maintains metadata correctness.
+One way to achieve **software coherence** is to keep the _data_ in LNR and small **metadata** in the SCR to track the coherence, where hardware coherence maintains metadata correctness.
 
-More concretely, each shared object gets a _coherence record_ (version counter plus a lock) which is allocated in SCR. A host checks the record before accessing the object. If the version number is updated that means there was a write since the host’s last access. Which means the host might be holding a stale cache. The host will then issues a manual cache flush operations and re-reads the data from CXL. The figure on the right illustrates it.
+More concretely, each shared object gets a _coherence record_ (version counter plus a lock) which is allocated in SCR. A host checks the record before accessing the object. If the version number is updated that means there was a write since the host’s last access. Which means the host might be holding a stale cache. The host will then issue manual cache flush operations and re-reads the data from CXL. The figure on the right illustrates it.
 
 Next to each object’s coherence record, a shared index lets hosts find each object and its record. We refer to the index and the coherence records together as the metadata. In the Megalon paper, we call this software coherence approach, which keeps _all_ of the metadata in the SCR to track coherence for data in the LNR, **hardware-coherent metadata-based sharing** or **HCMeta** for short. **Tigon** (OSDI ’25), a partitioned database for a multi-host CXL pod, uses this method.
 
@@ -168,9 +168,9 @@ An animation of software coherence. Host 1 caches A at version 0; host 2 writes 
 
 HCMeta works for Tigon’s workload of occasional cross-partition transactions. But as the shared dataset scales a problem surfaces: _the metadata grows with the number of shared objects, but the SCR does not._ So the SCR soon fills up after sharing only a limited number of data objects.
 
-Eventually when HCMeat runs out of SCR space, it **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner. We call the rotation _churn_. Becasue of these churns, as the dataset grows, throughput drops sharply (as the figure on the right shows).
+Eventually when HCMeta runs out of SCR space, it **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner. We call the rotation _churn_. Because of these churns, as the dataset grows, throughput drops sharply (as the figure on the right shows).
 
-**Summary.** Software coherence lets hosts share data objects in the LNR while keeping them coherent, but HCMeta, which keeps all of its metadata in the SCR, takes a performance hit once the SCR fills up. So our first paper asks: _how can hosts share large number of objects when the metadata itself is too big for the SCR?_
+**Summary.** Software coherence lets hosts share data objects in the LNR while keeping them coherent, but HCMeta, which keeps all of its metadata in the SCR, takes a performance hit once the SCR fills up. So our first paper asks: _how can hosts share a large number of objects when the metadata itself is too big for the SCR?_
 
 ### Measure HCMeta collapse
 
@@ -209,7 +209,7 @@ CXL lets hosts share terabytes, but reportedly keeps only a small region coheren
 
 **Megalon** makes one key observation: the metadata is two very different things glued together. **The index**, which maps each object’s ID to its location. It is _big_ (every object’s key, tens of bytes each) and _cold_, it changes on inserts and deletes, far less often than data writes. **The coherence records** are _tiny_ (a lock bit and a counter, 4 bytes) and _hot_: updated/accessed on every write.
 
-HCMeta allocated both index and coherence record in the SCR. Megalon’s key idea is to **split** them and share each the way its nature demands. The hot, tiny records stay _physically_ shared in the SCR, where hardware coherence makes coherence checks fast; at 4 bytes, about 13× more of them fit than HCMeta’s 52-byte bundles. The big, cold index is _logically_ shared: every host keeps a full **replica** in its local DRAM, of which it has hundreds of gigabytes, roughly 1000× the SCR. At 100 MB SCR, HCMeta can share about 2 million objects, but Megalon can share about 25 million, _~12x_ more.
+HCMeta allocated both index and coherence record in the SCR. Megalon’s key idea is to **split** them and share each the way its nature demands. The hot, tiny records stay _physically_ shared in the SCR, where hardware coherence makes coherence checks fast; at 4 bytes, about 13× more of them fit than HCMeta’s 52-byte bundles. The big, cold index is _logically_ shared: every host keeps a full **replica** in its local DRAM, of which it has hundreds of gigabytes, roughly 1000× the SCR. At 100 MB SCR, HCMeta can share about 2 million objects, but Megalon can share about 25 million, _~12×_ more.
 
 At first sight, replicating the index recreates the problem: N replicas must now be kept consistent. However, the index is the _cold_ half. It changes rarely, so keeping replicas in sync is cheap, given a mechanism to do it.
 
