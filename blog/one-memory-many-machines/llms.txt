@@ -4,7 +4,7 @@
 
 A general-audience explainer by Kiran Hombal and Jiyu Hu of shared CXL memory,
 based on the authors' papers Megalon (OSDI 2026, best-paper
-nominee) and Prism (SOSP 2026) and a talk they gave at ByteDance.
+nominee) and Prism (SOSP 2026).
 Every number on the page names its source. Values read off a paper
 figure are labeled as such in the figure's caption.
 

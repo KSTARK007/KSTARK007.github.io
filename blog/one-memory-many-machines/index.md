@@ -8,7 +8,7 @@ authors:
     url: "https://jiyuuuhuuu.github.io/"
 canonical_url: "https://kstark007.github.io/blog/one-memory-many-machines/"
 date_published: "2026-08-25T09:00:00-05:00"
-date_modified: "2026-10-10T09:00:00-05:00"
+date_modified: "2026-10-19T09:00:00-05:00"
 description: "What shared CXL memory is, why hardware coherence covers only a sliver of it, and how to share data on it anyway: a general-audience walk from the memory wall to our lab's Megalon (OSDI '26) and Prism (SOSP '26)."
 based_on_papers: "Megalon: Efficient Data Sharing for Partly Coherent CXL Memory (OSDI 2026); Disk-Based LSMs: An Unexpectedly Good Index for Partly Coherent CXL Memory (SOSP 2026)"
 megalon_authors: "Jiyu Hu, Seokjoo Cho, Landon Johnson, Kiran Hombal, Shreesha G. Bhat, Marcos K. Aguilera, Ramnatthan Alagappan, Aishwarya Ganesan"
@@ -33,9 +33,9 @@ Canonical HTML version: https://kstark007.github.io/blog/one-memory-many-machine
 
 CXL 3.0 enables multiple TBs of memory to be shared between multiple hosts, opening new potential for distributed applications such as databases and KV stores. However, it is reported that only a small portion of the shared CXL memory region (hundreds of MBs) can support cross-host cache coherence due to hardware constraints, leaving the remaining TBs of memory non-cache-coherent across hosts.
 
-**Megalon** enables coherently sharing a large number of data objects in the partly coherent CXL memory by utilizing the software coherence approach. It does so efficiently through **split metadata sharing**, which uses the precious coherent region smartly by storing only the performance-crucial coherence metadata.
+**Megalon** lets us coherently share a large number of data objects in the partly coherent CXL memory by utilizing the software coherence approach. It does so efficiently through **split metadata sharing**, which uses the precious coherent region smartly by storing only the critical coherence metadata.
 
-**Prism** explores how to build a shared index on top of partly coherent CXL in a principled manner. It makes a core observation that the LSM, a data structure originally optimized for disk accesses, is an unexpectedly great fit for CXL indexes. The reason lies in the LSM’s small **updatable surface area**.
+**Prism** explores how to build a shared index on top of partly coherent CXL in a principled manner. It makes a core observation that the LSM, a data structure originally optimized for disk accesses, is an unexpectedly great fit for CXL indexes. The solution lies in the LSM’s small **updatable surface area**.
 
 - **Papers**: 2
 
@@ -49,27 +49,25 @@ Megalon at OSDI '26
 
 ## 1. Intro to CXL
 
-A great new memory technology
+A new memory technology
 
-**The memory wall.** Server CPUs went from a dozen cores in 2012 to well over a hundred today, yet DRAM capacity per core has been falling for a decade: a CPU cannot simply add memory channels, because each DDR channel takes roughly 200 signal pins. You cannot fix a pin-count problem with software. You need a new wire.
+**The memory wall.** Server CPUs went from a dozen cores in 2012 to well over a hundred today, yet DRAM capacity per core has been falling for a decade: a CPU cannot simply add memory channels due to hardware constraints.
 
-**Compute Express Link (CXL)** is that wire. It is an open standard built on PCIe. A CXL memory device is a box of DRAM on PCIe, and the CPU issues direct memory loads and stores, not I/O operations like a disk. Once mapped, it is just more memory to a program.
+To solve this problem, **Compute Express Link (CXL)** was created. It is an open standard built on PCIe. A CXL memory device is a box of DRAM connected over PCIe, and the CPU can issue direct memory loads and stores.
 
 ### Two ways out of the socket
 
 Sharma et al., CXL survey · PCI-SIG
 
-Bandwidth per signal pin is the whole story: close to **1 GB/s per pin** for the PCIe link against about **0.25** for DDR5, roughly 4× more, and PCIe 6.0 doubles it again. A CPU can afford far more of these narrow links than DDR channels, which is how CXL adds terabytes where the DDR bus cannot. The survey we cite quotes 256 GB/s in its introduction; its own bandwidth section gives the per-direction figure used here.
+Bandwidth per signal pin is important. close to **1 GB/s per pin** for the PCIe link against about **0.25** for DDR5, roughly 4× more, and PCIe 6.0 doubles it again. A CPU can afford far more of these narrow links than DDR channels, which is how CXL adds terabytes where the DDR bus cannot.
 
 A diagram comparing a DDR channel, about 200 signal pins for about 51 gigabytes per second, against a CXL link over PCIe, 64 signal pins for about 63 gigabytes per second in each direction.
 
-The price for better scalability is the latency. Local DRAM answers in roughly 110 ns; CXL memory takes two to three times that, about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which software tolerates every day. It is still far closer than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
+But the scalability comes at a cost and that is higher latency. Local DRAM latency is roughly 100 ns, compared to CXL memory latency which is two to three times that which is about the cost of reaching the _other socket_ of a two-socket server (a NUMA hop), which is an acceptable norm for multi-socket servers. It is still much faster than a remote read over RDMA (microseconds) or an SSD (tens of microseconds).
 
 ### Where CXL lands in the hierarchy
 
 Melody (ASPLOS '25); Next Platform
-
-Approximate latency, log scale. Each dot is a point inside a range; the table says which rows are measured and which are textbook orders of magnitude. CXL sits in the long gap between DRAM and the network.
 
 Show the numbers
 
@@ -90,19 +88,19 @@ A log-scale ladder of approximate access latencies from L1 cache at about one na
 
 ### CXL 3.0: cross-host sharing
 
-From CXL 1.0 to CXL 3.0, from memory expansion to memory sharing
+From memory expansion (CXL 1.0) to memory sharing (CXL 3.0+)
 
-CXL 1.1 (2019) does _expansion_: one host, more memory. CXL 2.0 (2020) adds switching and _memory pooling_: a rack-level pool carved into segments, each still owned by one host at a time. CXL 3.0 (2022) and its successors (3.2 in 2024, 4.0 in late 2025) add the radical part: **multi-host shared memory**. Several machines map the _same_ region into their address spaces so to share data efficiently over a unified piece of memory.
+CXL 1.1 (2019) does _expansion_ where a single host gets more memory capacity. CXL 2.0 (2020) adds _memory pooling_, here it is a rack-level pool, broken down into segments where each segment is still owned by one host at a time. CXL 3.0 (2022) and its successors (3.2 in 2024, 4.0 in late 2025) add **multi-host shared memory**. Several hosts can map the _same_ region into their address spaces and share data efficiently over a unified piece of memory.
 
-Now with CXL 3.0 shared memory, databases, key-value stores, and file systems could keep one copy of their data which every host can reach. Accessing shared data can be a single memory operation instead of a trip over the network.
+Now with CXL 3.0 shared memory, applications like databases, key-value stores, and file systems could keep one copy of their data in CXL, which every host can reach. Accessing this shared data is now a direct memory operation instead of a round trips over the network.
 
-If it sounds too good to be true, it is, due to a catch of CXL 3.0 that prevents data from being shared correctly.
+But there is a catch...
 
 ### Three generations, three relationships to memory
 
 CXL Consortium spec releases
 
-Toggle the generations. Expansion gives one host more memory; pooling gives each host its own segment; sharing lets every host map the same region at once. The overlap is the new thing.
+Toggle the generations.
 
 An interactive diagram showing CXL 1.1 with one host and one expander, CXL 2.0 with a switch assigning pool segments to individual hosts, and CXL 3.0 with four hosts mapping one shared region simultaneously.
 
@@ -110,31 +108,31 @@ An interactive diagram showing CXL 1.1 with one host and one expander, CXL 2.0 w
 
 ## 2. The catch: partly coherent memory
 
-CXL 3.0 lacks full cross-host cache coherence, and it causes problems...
+CXL 3.0 lacks full cross-host cache coherence
 
 Background · Cache coherence · expand if new to CPU caches
 
-Most memory loads/stores never reach DRAM. A trip to memory costs about 100 ns, so every CPU keeps recently used data in small, fast, private **caches** and serves most loads/catches most stores from there. Caching creates copies, and copies can go stale: if one CPU changes a value that another has cached, the other’s copy is now wrong.
+Most memory loads/stores never reach DRAM. A memory access costs about 100 ns, so every CPU keeps recently used data in small, fast and local **caches** and serves most loads/stores from there. But because these Caches are local, it creates copies, and copies can go stale: if one CPU changes a value that another has cached, the other’s copy is now wrong.
 
-Inside one machine you never see this, because the hardware does the heavy lifting. **Cache coherence** keeps every cached copy of a location consistent: before a CPU writes, the hardware finds the other copies and invalidates them, so every CPU always sees one coherent view of memory. Software gets that for free. The hardware pays for it in bookkeeping, which grows with the number of caches and the amount of memory tracked.
+Inside a single machine this is not visible to the applications, because the hardware does the heavy lifting. **Cache coherence** keeps every cached copy of a location consistent: before a CPU writes, the hardware finds the other copies and invalidates them, so every CPU always sees one coherent view of memory. Software gets that for free.
 
-Now imagine scaling the hardware cache coherence support up to what CXL 3.0 allows: several _machines_, dozens of caches each, sharing _terabytes_. To behave like memory inside one machine, the hardware would have to run coherence across hosts, over PCIe, for every cache line. The vendors are blunt about the arithmetic: AMD, Micron, and Samsung all say the machinery involved stops scaling somewhere between dozens and a few hundred megabytes.
+Imagine scaling the hardware cache coherence support to what CXL 3.0 needs: several _machines_ with dozens of caches each, sharing _terabytes_ of memory. To behave like memory on a single machine, the hardware would have to run coherence across all the hosts, over PCIe, for every cache line. Vendors like AMD, Micron, and Samsung all say that scaling stops somewhere around a few hundred megabytes.
 
-So the hardware is expected to compromise, in what we call the **partly coherent model**, which both of our papers target. The memory splits in two. A **small coherent region**, the _SCR_, is the part that hardware keeps coherent across hosts. A **large non-coherent region**, the _LNR_, is the rest of the memory, where the hardware does nothing about coherence across hosts. Each host’s own cache coherence still works; it just never hears from the others.
+So the hardware is expected to have **partly coherent model**, which is the assumption both of our papers use. The memory is split into two regions. A **small coherent region** or _SCR_, is the part that hardware keeps coherent across hosts. A **large non-coherent region** or _LNR_, is the rest of the memory, where there is no expectation of coherence across hosts.
 
 ### The two regions, side by side
 
-Megalon §2.1 · Tigon, citing AMD
+Megalon §2.1 · Tigon
 
-A few hundred MB on a device of several TB: roughly one part in ten thousand. The marker is widened so that it is visible at all. Everything the hardware promises about coherence across hosts happens inside it.
-
-A device of several TB with a coherent region of a few hundred MB: **roughly one part in ten thousand**. The marker is widened to be visible at all; at true scale you could not see it, which is the point.
+A few hundred MB on a device of several TB.
 
 A long bar representing several terabytes of CXL memory. The hardware-coherent region, a few hundred megabytes, would be far thinner than a pixel; it is drawn as a widened marker at the left edge and shown magnified.
 
-What goes wrong in the LNR without coherence? Suppose Host 1 reads object A and caches it. Host 2 overwrites it with A′. On one machine that write would invalidate host 1’s copy; across machines, in the LNR, _no invalidation is ever sent_. Host 1 reads again, its cache says “I have that,” and it returns the stale value. Silently. Your database just served data that is no longer fresh.
+Why do we need cross host cache coherence? What happens if the data stored in LNR is accessed by multiple hosts? let us look at it with an example.
 
-One could simply use the SCR to share data, but a few hundred megabytes shared among many hosts is nothing; the whole point was the terabytes. Rejected. Therefore, we need a better approach to share data coherently in CXL.
+Suppose Host 1 reads object A and caches it. Host 2 overwrites it with A′. On Host 2's machine that write would invalidate all its other copies. But across other machines, in the LNR, _no invalidation is ever sent_. So when Host 1 reads the same object again, its cache returns the stale value silently. This is a correctness bug and is very serious.
+
+One could simply use the SCR to share data, but a few hundred megabytes shared among many hosts is insignificant. Therefore, we need a better approach to share data coherently across hosts in CXL.
 
 ### The stale read, step by step
 
@@ -142,7 +140,7 @@ One could simply use the SCR to share data, but a few hundred megabytes shared a
 
 The value drops into host 1’s CPU cache, as every read does.
 
-Host 2’s write reaches the memory, but no invalidation reaches host 1’s cache, so host 1’s next read is answered by its own cache, wrongly.
+Host 2’s write reaches the memory, but no invalidation reaches host 1’s cache, so host 1’s next read is answered by its own cache, which is incorrect.
 
 An animation of two hosts sharing a value in the non-coherent region. Host 1 caches A; host 2 writes A-prime; host 1 reads again and its cache serves the stale A with a warning flag.
 
@@ -150,13 +148,11 @@ An animation of two hosts sharing a value in the non-coherent region. Host 1 cac
 
 ## 3. A software approach, and how it collapses
 
-Cache coherence can be managed in software, but a naive approach takes a performance hit.
+One way to achive **software coherence** is to keep the _data_ in LNR and small **metadata** in the SCR to track the coherence, where hardware coherence maintains metadata correctness.
 
-A better idea keeps the _data_ in the vast LNR and small **metadata** in the SCR to track the coherence, where hardware coherence makes the metadata itself trustworthy. We call this approach **software coherence**.
+More concretely, each shared object gets a _coherence record_ (version counter plus a lock) which is allocated in SCR. A host checks the record before accessing the object. If the version number is updated that means there was a write since the host’s last access. Which means the host might be holding a stale cache. The host will then issues a manual cache flush operations and re-reads the data from CXL. The figure on the right illustrates it.
 
-Specifically, each shared object gets a _coherence record_ located in the SCR, think of a version counter plus a lock, and a host checks the record before touching the object; if someone wrote it since the host’s last access, meaning that the host might hold a stale cache, the host issues manual cache flush operations in software and re-reads from CXL. The first figure on the right steps through it.
-
-Next to each object’s coherence record, a shared index lets hosts find each object and its record. We refer to the index and the coherence records together as the metadata. In the Megalon paper, we call this software coherence approach, which keeps _all_ of the metadata in the SCR to track coherence for data in the LNR, **hardware-coherent metadata-based sharing**, **HCMeta** for short. **Tigon** (OSDI ’25), a partitioned database for a multi-host CXL pod, works this way.
+Next to each object’s coherence record, a shared index lets hosts find each object and its record. We refer to the index and the coherence records together as the metadata. In the Megalon paper, we call this software coherence approach, which keeps _all_ of the metadata in the SCR to track coherence for data in the LNR, **hardware-coherent metadata-based sharing** or **HCMeta** for short. **Tigon** (OSDI ’25), a partitioned database for a multi-host CXL pod, uses this method.
 
 ### Software coherence, step by step
 
@@ -170,11 +166,11 @@ A version record per object in the SCR, which hardware keeps coherent; a reader 
 
 An animation of software coherence. Host 1 caches A at version 0; host 2 writes A-prime to the LNR and bumps A's version in the SCR to 1; host 1 checks the SCR, sees 0 does not match 1, invalidates its cached A, and re-reads A-prime from the LNR.
 
-HCMeta works perfectly for Tigon’s workload of occasional cross-partition transactions. But push more data into sharing and a problem surfaces: _the metadata grows with the number of shared objects, but the SCR does not._ So the SCR soon fills up after sharing only a limited number of data objects (roughly in the low millions).
+HCMeta works for Tigon’s workload of occasional cross-partition transactions. But as the shared dataset scales a problem surfaces: _the metadata grows with the number of shared objects, but the SCR does not._ So the SCR soon fills up after sharing only a limited number of data objects.
 
-At the cap, HCMeta **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner. We call the rotation _churn_. As the dataset grows, churn cuts throughput sharply, as the second figure on the right shows.
+Eventually when HCMeat runs out of SCR space, it **unshares** an old object to make room for a new one. Objects start rotating through the tiny window of shareability, and every rotation is expensive: the host needs to wait for an object to be reshared if it is unshared by the owner. We call the rotation _churn_. Becasue of these churns, as the dataset grows, throughput drops sharply (as the figure on the right shows).
 
-**Summary.** Software coherence lets hosts share data objects in the LNR while keeping them coherent, but HCMeta, which keeps all of its metadata in the SCR, takes a performance hit once the SCR fills up. So our first paper asks: _how can hosts share a huge number of objects when even the metadata is too big for the coherent region?_
+**Summary.** Software coherence lets hosts share data objects in the LNR while keeping them coherent, but HCMeta, which keeps all of its metadata in the SCR, takes a performance hit once the SCR fills up. So our first paper asks: _how can hosts share large number of objects when the metadata itself is too big for the SCR?_
 
 ### Measure HCMeta collapse
 
@@ -211,9 +207,9 @@ Skipped ahead? The setup in brief
 
 CXL lets hosts share terabytes, but reportedly keeps only a small region coherent across hosts (the **SCR**, a few hundred MB); the large non-coherent region (**LNR**) can silently serve stale cached data. A natural fix, **HCMeta**, uses metadata in the SCR to track coherence for data in the LNR through a software approach, but the metadata can grow huge and soon fill up the SCR without even sharing a large number of data objects (~2M). The performance collapses past it. [↑ The partly coherent model](#partly-coherent) · [↑ How HCMeta collapses](#software-coherence)
 
-**Megalon** starts where HCMeta breaks, with one observation: the metadata is two very different things glued together. **The index**, which maps each object’s ID to its location, is _big_ (every object’s key, tens of bytes each) but _cold_: it changes on inserts and deletes, far less often than data writes. **The coherence records** are _tiny_ (a lock bit and a counter, 4 bytes) but _hot_: touched on every write.
+**Megalon** makes one key observation: the metadata is two very different things glued together. **The index**, which maps each object’s ID to its location. It is _big_ (every object’s key, tens of bytes each) and _cold_, it changes on inserts and deletes, far less often than data writes. **The coherence records** are _tiny_ (a lock bit and a counter, 4 bytes) and _hot_: updated/accessed on every write.
 
-HCMeta stuffs both into the SCR. Megalon’s key idea is to **split** them and share each the way its nature demands. The hot, tiny records stay _physically_ shared in the SCR, where hardware coherence makes coherence checks fast; at 4 bytes, about 13× more of them fit than HCMeta’s 52-byte bundles. The big, cold index is _logically_ shared: every host keeps a full **replica** in its local DRAM, of which it has hundreds of gigabytes, roughly 1000× the SCR. A 100 MB SCR that capped HCMeta near 2 million objects lets Megalon share about 25 million.
+HCMeta allocated both index and coherence record in the SCR. Megalon’s key idea is to **split** them and share each the way its nature demands. The hot, tiny records stay _physically_ shared in the SCR, where hardware coherence makes coherence checks fast; at 4 bytes, about 13× more of them fit than HCMeta’s 52-byte bundles. The big, cold index is _logically_ shared: every host keeps a full **replica** in its local DRAM, of which it has hundreds of gigabytes, roughly 1000× the SCR. At 100 MB SCR, HCMeta can share about 2 million objects, but Megalon can share about 25 million, _~12x_ more.
 
 At first sight, replicating the index recreates the problem: N replicas must now be kept consistent. However, the index is the _cold_ half. It changes rarely, so keeping replicas in sync is cheap, given a mechanism to do it.
 
@@ -248,8 +244,6 @@ The log supports two further coherence techniques.
 Megalon §3.3, §4
 
 Only the head and tail pointers need hardware coherence. The entries sit in the LNR, written with a flush and read past the cache, and order does the rest.
-
-Hosts claim entries with a compare-and-swap on the tail and replay them into their replicas. Ordering without messages; the only coordination is atomic operations on two pointers in the SCR.
 
 A shared log laid out in the non-coherent region with its head and tail pointers in the coherent region. Hosts append entries and replay them into local index replicas.
 
@@ -286,9 +280,11 @@ Shared CXL memory opens the door for a whole range of applications to share data
 
 The natural starting point is the software coherence approach from [section 3](#software-coherence): data in the LNR, coherence metadata in the SCR, and a check of the metadata before every access. Can we use it to port existing indexes? We start with two widely used in-memory indexes. The **adaptive radix tree (ART)** has many small nodes: each node is adaptive, starting as a tiny Node4 and growing only as needed, up to Node256. The **B+-tree** is the opposite: a few large, fixed-size nodes, each with a high fan-out.
 
-To apply software coherence, we piggyback the coherence records on the version numbers of **optimistic lock coupling (OLC)**. OLC is the concurrency control both indexes already use: every node keeps a version number that changes whenever the node is updated. The port is then straightforward. We separate the version numbers from the tree nodes and move them into the SCR, where hardware keeps them coherent; the tree nodes and the key-value pairs stay in the LNR. We call these software-coherent indexes **SC-ART** and **SC-BTree**. Simple enough, right? Not really. It comes with its own problems.
+To apply software coherence, we piggyback the coherence records on the version numbers of **optimistic lock coupling (OLC)**. OLC is the concurrency control method already widely used. In OLC every node keeps a version number that changes whenever the node is updated. The port is straightforward. We separate the version numbers from the tree nodes and move them into the SCR, where hardware keeps them coherent. Tree nodes and the key-value pairs stay in the LNR. We call these software-coherent indexes **SC-ART** and **SC-BTree**.
 
-**Problem 1: version numbers overflow the SCR.** Every node needs a version number in the SCR, and as the tree grows, so does the number of version numbers. With 100M keys, ART has ~40M inner nodes; at 8 bytes per version, a 128 MB SCR holds only about 40% of them. The rest spill into the LNR, and now the metadata we rely on to detect stale data can itself be stale. A host must flush a spilled version number on every access and re-read it, even if nothing has changed. Would fewer but larger nodes be an easy fix?
+Simple enough, right? Not really. It comes with its own problems.
+
+**Problem 1: version numbers overflow the SCR.** Every node needs a version number in the SCR, and as the tree grows, so does the number of version numbers. With 100M keys, ART has ~40M inner nodes; at 8 bytes per version, a 128 MB SCR holds only about 40% of them. The rest spill into the LNR, and now the metadata we rely on to detect stale data can itself be stale. A host must flush a spilled version number on every access and re-read it, even if nothing has changed causing a huge performance drop.
 
 ### Problem 1: version numbers overflow the SCR
 
@@ -298,11 +294,9 @@ Prism §3.2, Figure 1
 
 Each node of SC-ART keeps its version number in the SCR. With five nodes, five of the eight slots are used, and a host checks a node’s version there before trusting its cached copy.
 
-Every node of SC-ART keeps a version number in the SCR. As the tree grows, the version numbers outnumber the slots, and the ones that spill into the LNR have to be flushed on every access. The tree and the eight slots are drawn small; the last step gives the paper’s numbers.
-
 An animation of an ART growing from five nodes to thirteen while its version numbers fill eight slots in the coherent region; the five that spill into the non-coherent region are marked as needing a flush on every access.
 
-**Problem 2: bigger nodes cause false invalidations.** Larger nodes, as in B-trees, do solve the capacity problem: more keys per node means fewer nodes and fewer version numbers. With a fan-out of 128, SC-BTree’s version numbers fit in the SCR easily. But now a single version number covers 128 keys, causing significant **false invalidations**, as the Problem 2 animation on the right shows. We made the metadata fit but introduced unnecessary cache flushes.
+**Problem 2: bigger nodes cause false invalidations.** Larger nodes, as in B-trees, do solve the capacity problem: more keys per node means fewer nodes and fewer version numbers. With a fan-out of 128, SC-BTree’s version numbers fit in the SCR easily. But now a single version number covers many keys, causing significant **false invalidations**, as the animation on the right shows. We made the metadata fit but introduced unnecessary cache flushes.
 
 ### Problem 2: false invalidation
 
@@ -311,8 +305,6 @@ Prism §3.3, Figure 2
 1 / 4 · One version number for the whole node
 
 A large node holds 128 keys in the LNR and shares a single version number in the SCR. Host 2 has read key 298 before, so the whole node sits in its cache at version 7.
-
-Host 1 changes one key; the node’s version number changes; host 2, which wants a different key from the same node, must flush and re-read all 128. One write, 127 unmodified keys flushed: a false invalidation.
 
 An animation of two hosts and a 128-key B-tree node with one version number in the coherent region. Host 2 has the node cached at version 7; host 1 updates key 194 and the version becomes 8; host 2 reads key 298, sees the mismatch, and must flush and re-read the whole node.
 
@@ -328,7 +320,7 @@ modeled: version numbers fit, false invalidations begin
 
 every version number fits, but one write already invalidates 22 unmodified keys; smaller nodes avoid that and overflow the SCR again
 
-The two ends are the paper’s measurements: SC-ART at ART’s smallest node size and SC-BTree at 128 keys per node. In between is a model that scales the paper’s 40M ART nodes inversely with node size, and the widget says so. There is no throughput axis, because the paper measures only the two ends.
+The two ends are the paper’s measurements: SC-ART at ART’s smallest node size and SC-BTree at 128 keys per node.
 
 An interactive slider over index node size. With small nodes, tens of millions of version numbers overflow the coherent region. With large nodes, one update falsely invalidates every other key in a 128-key node. The two ends are measured; the middle is a model.
 
@@ -342,7 +334,7 @@ A data structure built for disk is an unexpectedly good fit for partly coherent 
 
 That data structure is the **log-structured merge tree (LSM)**, the engine inside RocksDB, LevelDB, Bigtable, and Cassandra. It keeps writes in a small, updatable **memtable** and the bulk of the data in sorted, immutable files called **SSTables**.
 
-An LSM confines its updatable surface area to the memtable, exactly what partly coherent CXL asks for. We place the memtable and the **manifest**, which records the live SSTables, in the SCR under hardware coherence. The immutable SSTables live in the LNR. We call this port **SC-LSM**.
+An LSM confines its updatable surface area to the memtable, a good fit for partly coherent CXL. We place the memtable and the **manifest**, which records the live SSTables, in the SCR where hardware coherence keeps them coherent. The immutable SSTables live in the LNR. We call this port **SC-LSM**.
 
 Background · LSM trees · expand if new to LSMs
 
@@ -359,8 +351,6 @@ One thing remains to handle: memory reuse. When compaction discards an SSTable, 
 ### What a good index for partly coherent CXL looks like
 
 Prism §3.4, §4.1
-
-The index as a triangle, its in-place-updatable part shaded, beside the SCR and the LNR. Switch the design: an ART or B+-tree can be modified anywhere, so the shading covers the whole index and its version numbers overflow the SCR; an LSM confines updates to the memtable at the top, which fits in the SCR, and keeps the bulk immutable in the LNR.
 
 An interactive diagram of an index drawn as a triangle beside the coherent and non-coherent regions. For an ART or B+-tree the whole triangle is updatable and its version numbers overflow the coherent region. For an LSM only the apex, the memtable, is updatable and sits in the coherent region, with immutable SSTables below.
 
@@ -388,8 +378,6 @@ Prism’s three tiers and their coherence mechanisms
 - Memtable · SCR (64 MB) · The most frequently written keys · Hardware coherence · No software checks ·
 - BUL · Data in LNR; version numbers in SCR (62 MB) · Less frequently written keys · Per-node version check · Fine-grained, bounded ·
 - SSTables · LNR (the terabytes) · The least frequently written keys, immutable · Immutable + rising IDs; one flush on first sight · Coarse but safe ·
-
-A 2 MB manifest in the SCR lists the live SSTables: 64 + 62 + 2 = 128 MB.
 
 A table of Prism's three tiers. The memtable in the SCR holds the most frequently written keys under hardware coherence. The BUL holds less frequently written keys, with data in the LNR and version numbers in the SCR, checked per node. The SSTables in the LNR hold the least frequently written keys, immutable, with rising IDs and one flush on first sight.
 
@@ -486,11 +474,7 @@ Kiran Hombal, Jiyu Hu, Marcos K. Aguilera, Ramnatthan Alagappan, Aishwarya Ganes
 
 [paper (PDF)](https://kstark007.github.io/assets/papers/Prism/paper.pdf) · [ACM DOI](https://doi.org/10.1145/3830418.3843886)
 
-Intro to CXL: Data Sharing on Partly Coherent CXL Memory. Talk at ByteDance, 2026.
-
-Kiran Hombal and Jiyu Hu. The deck is not public; slide numbers on this page refer to it.
-
-The numbers in this post come from those three sources. Where a chart’s values were read off a paper figure rather than taken from a table, its caption says so. The background facts below were checked against each linked page; the one whose URL no longer resolves says so in its entry.
+The numbers in this post come from those two sources. Where a chart’s values were read off a paper figure rather than taken from a table, its caption says so. The background facts below were checked against each linked page; the one whose URL no longer resolves says so in its entry.
 
 ### CXL and hardware
 
@@ -500,7 +484,7 @@ The numbers in this post come from those three sources. Where a chart’s values
 - [Liu et al. Systematic CXL Memory Characterization and Performance Analysis at Scale (Melody). ASPLOS 2025](https://people.cs.vt.edu/~jinshu/docs/papers/Melody_ASPLOS.pdf)
 - [Just How Bad Is CXL Memory Latency? The Next Platform, 2022](https://www.nextplatform.com/2022/12/05/just-how-bad-is-cxl-memory-latency/)
 - [Jain et al. (AMD). Memory Sharing with CXL: Hardware and Software Design Approaches. arXiv, 2024](https://arxiv.org/abs/2404.03245)
-- Micron's Perspective on Impact of CXL on DRAM Bit Growth Rate. Whitepaper, 2023 (the chart behind the memory-wall figure, as reproduced in our talk; Micron's original URL no longer resolves)
+- Micron's Perspective on Impact of CXL on DRAM Bit Growth Rate. Whitepaper, 2023 (the chart behind the memory-wall figure; Micron's original URL no longer resolves)
 - [Micron CZ120 CXL memory expansion modules: launch announcement, 2023](https://www.globenewswire.com/news-release/2023/08/07/2719764/14450/en/Micron-Launches-Memory-Expansion-Module-Portfolio-to-Accelerate-CXL-2-0-Adoption.html)
 - [Samsung CMM-D (CXL Memory Module, DRAM): product page](https://semiconductor.samsung.com/cxl-memory/cmm-d/)
 - [CXL Memory Disaggregation and Tiering: Lessons Learned from Storage. SNIA SDC 2023](https://www.snia.org/educational-library/cxl-memory-disaggregation-and-tiering-lessons-learned-storage-2023)
@@ -531,9 +515,9 @@ The numbers in this post come from those three sources. Where a chart’s values
 
 ## About
 
-Written by [Kiran Hombal](https://kstark007.github.io/) and [Jiyu Hu](https://jiyuuuhuuu.github.io/), PhD students at the [DASSL Lab, UIUC](https://dassl-uiuc.github.io/), advised by Ramnatthan Alagappan and Aishwarya Ganesan. The research described here was done jointly with our co-authors, including Marcos K. Aguilera at NVIDIA.
+Written by [Kiran Hombal](https://kstark007.github.io/) and [Jiyu Hu](https://jiyuuuhuuu.github.io/), PhD students at the [DASSL Lab, UIUC](https://dassl-uiuc.github.io/), advised by [Ramnatthan Alagappan](https://ramalagappan.github.io/) and [Aishwarya Ganesan](https://aishwaryaganesan.github.io/). The research described here was done jointly with our co-authors, including Marcos K. Aguilera at NVIDIA.
 
-The systems and results are our papers’; the simplifications for a general audience are ours, and so are any errors they introduce. Every figure on this page is redrawn from the papers or the talk, and each plate names its source.
+The systems and results are our papers’; the simplifications for a general audience are ours, and so are any errors they introduce. Every figure on this page is redrawn from the papers, and each plate names its source.
 
 ### Cite this post
 
